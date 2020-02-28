@@ -6,7 +6,7 @@ namespace Aemula.Chips.Arm.Tests
 {
     public class ArmTests
     {
-        [Theory]
+        [Theory(Skip = "Not implemented yet")]
         [InlineData("add")]
         //[InlineData("push")]
         public void CanExecuteTestSuite(string testFile)

@@ -8,6 +8,7 @@ namespace Aemula
         private static readonly Dictionary<Type, object> Calculators = new Dictionary<Type, object>()
         {
             { typeof(ushort), new UInt16Calculator() },
+            { typeof(uint), new UInt32Calculator() },
         };
 
         public static IGenericCalculator<T> GetInstance<T>()
@@ -27,6 +28,19 @@ namespace Aemula
             public bool IsInRange(ushort value, ushort start, ushort end) => value >= start && value <= end;
 
             public ulong GetArrayIndex(ushort value) => value;
+        }
+
+        private sealed class UInt32Calculator : IGenericCalculator<uint>
+        {
+            public uint Add(uint left, ulong right) => (uint)(left + right);
+
+            public uint And(uint left, ulong right) => (uint)(left & right);
+
+            public uint Subtract(uint left, uint right) => (uint)(left - right);
+
+            public bool IsInRange(uint value, uint start, uint end) => value >= start && value <= end;
+
+            public ulong GetArrayIndex(uint value) => value;
         }
     }
 }
