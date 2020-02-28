@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="ROMs\*.rom">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aemula.Chips.Mos6502\Aemula.Chips.Mos6502.csproj" />
+    <ProjectReference Include="..\Aemula.Chips.Mos6522\Aemula.Chips.Mos6522.csproj" />
+    <ProjectReference Include="..\Aemula.Chips.Motorola6845\Aemula.Chips.Motorola6845.csproj" />
+  </ItemGroup>
+
+</Project>

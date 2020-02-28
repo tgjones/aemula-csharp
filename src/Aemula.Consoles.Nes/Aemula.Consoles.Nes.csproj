@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aemula.Chips.Ricoh2A03\Aemula.Chips.Ricoh2A03.csproj" />
+    <ProjectReference Include="..\Aemula.Chips.Ricoh2C02\Aemula.Chips.Ricoh2C02.csproj" />
+  </ItemGroup>
+
+</Project>
