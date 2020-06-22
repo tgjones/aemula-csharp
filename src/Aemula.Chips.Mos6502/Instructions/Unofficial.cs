@@ -132,7 +132,7 @@
         {
             var temp = (A & X) - _data;
             X = (byte)temp;
-            P.C = temp < 0;
+            P.C = temp >= 0;
             P.SetZeroNegativeFlags(X);
         }
 

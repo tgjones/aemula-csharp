@@ -4,7 +4,7 @@
     {
         private void Brk0()
         {
-            if ((_brkFlags & (BrkFlags.Irq | BrkFlags.Nmi)) != 0)
+            if ((_brkFlags & (BrkFlags.Irq | BrkFlags.Nmi)) == 0)
             {
                 PC += 1;
             }

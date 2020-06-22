@@ -14,7 +14,7 @@
         private void DoAdcDecimal(byte value)
         {
             var temp = (byte)((A + value + (P.C ? 1 : 0)) & 0xFF);
-            P.Z = temp != 0;
+            P.Z = temp == 0;
 
             var ah = 0;
             var al = (A & 0xF) + (value & 0xF) + (P.C ? 1 : 0);

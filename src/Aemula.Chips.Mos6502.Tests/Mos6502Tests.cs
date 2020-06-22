@@ -1,15 +1,13 @@
-using Aemula.Memory;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices.ComTypes;
 using System.Text;
-using Xunit;
+using NUnit.Framework;
 
 namespace Aemula.Chips.Mos6502.Tests
 {
     public class Mos6502Tests
     {
-        [Fact]
+        [Test]
         public void AllSuiteA()
         {
             var rom = File.ReadAllBytes(Path.Combine("Assets", "AllSuiteA.bin"));
@@ -43,14 +41,14 @@ namespace Aemula.Chips.Mos6502.Tests
                 }
             }
 
-            Assert.Equal(0xFF, ram[0x0210]);
+            Assert.AreEqual(0xFF, ram[0x0210]);
         }
 
-        [Fact]
+        [Test]
         public void DormannFunctionalTest()
         {
             var ram = File.ReadAllBytes(Path.Combine("Assets", "6502_functional_test.bin"));
-            Assert.Equal(0x10000, ram.Length);
+            Assert.AreEqual(0x10000, ram.Length);
 
             // Patch the test start address into the RESET vector.
             ram[0xFFFC] = 0x00;
@@ -78,10 +76,10 @@ namespace Aemula.Chips.Mos6502.Tests
                 }
             }
 
-            Assert.Equal(0x3399, cpu.PC.Value);
+            Assert.AreEqual(0x3399, cpu.PC.Value);
         }
 
-        [Fact]
+        [Test]
         public void NesTest()
         {
             byte[] rom;
@@ -171,23 +169,23 @@ namespace Aemula.Chips.Mos6502.Tests
                 streamWriter.Dispose();
             }
 
-            Assert.Equal(0x000, ram[0x0002]);
-            Assert.Equal(0x000, ram[0x0003]);
+            Assert.AreEqual(0x000, ram[0x0002]);
+            Assert.AreEqual(0x000, ram[0x0003]);
 
-            Assert.Equal(
-                File.ReadAllText(Path.Combine("Assets", "nestest.log")),
-                File.ReadAllText("nestest_aemula.log"));
+            FileAssert.AreEqual(
+                Path.Combine("Assets", "nestest.log"),
+                "nestest_aemula.log");
         }
 
-        [Fact]
+        [Test]
         public void C64Suite()
         {
             static string PetsciiToAscii(byte character) => character switch
             {
                 147 => "\n------------\n", // Clear
                 14 => "", // Toggle lowercase/uppercase character set
-                _ when character >= 0xC1 && character <= 0xDA => ((char)(character - 0xC1 + 65)).ToString(),
                 _ when character >= 0x41 && character <= 0x5A => ((char)(character - 0x41 + 97)).ToString(),
+                _ when character >= 0xC1 && character <= 0xDA => ((char)(character - 0xC1 + 65)).ToString(),
                 _ => ((char)character).ToString()
             };
 
@@ -282,7 +280,7 @@ namespace Aemula.Chips.Mos6502.Tests
                                 if (cpu.A == 13)
                                 {
                                     Debug.WriteLine(log.ToString());
-                                    //log.Clear();
+                                    log.Clear();
                                 }
                                 else
                                 {
