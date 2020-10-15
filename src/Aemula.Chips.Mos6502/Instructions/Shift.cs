@@ -55,23 +55,6 @@
             return P.SetZeroNegativeFlags((byte)((value << 1) | temp));
         }
 
-        /// <summary>
-        /// ROL - Rotate Left
-        /// </summary>
-        private void Rol()
-        {
-            _data = RolHelper(_ad.Lo);
-            _rw = false;
-        }
-
-        /// <summary>
-        /// ROL - Rotate Left (accumulator addressing)
-        /// </summary>
-        private void Rola()
-        {
-            A = RolHelper(A);
-        }
-
         private byte RorHelper(byte value)
         {
             var temp = (byte)((P.C ? 1 : 0) << 7);

@@ -1,24 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Text;
 
-namespace Aemula.Chips.Mos6502.Generators
+namespace Aemula.Chips.Mos6502.CodeGen
 {
-    [Generator]
-    public class Mos6502InstructionGenerator : ISourceGenerator
+    public static class Program
     {
-        public void Initialize(InitializationContext context)
-        {
-        }
-
-        public void Execute(SourceGeneratorContext context)
+        public static void Main()
         {
             var sb = new StringBuilder();
 
             sb.AppendLine("using System;");
+            sb.AppendLine("using System.Diagnostics;");
             sb.AppendLine("");
             sb.AppendLine("namespace Aemula.Chips.Mos6502");
             sb.AppendLine("{");
@@ -26,28 +21,45 @@ namespace Aemula.Chips.Mos6502.Generators
             sb.AppendLine("    {");
             sb.AppendLine("        private void ExecuteInstruction()");
             sb.AppendLine("        {");
-            sb.AppendLine("            switch ((_ir, _tr))");
+            sb.AppendLine("            int tempInt32 = 0;");
+            sb.AppendLine("            ");
+            sb.AppendLine("            switch ((_ir << 3) | _tr)");
             sb.AppendLine("            {");
 
-            foreach (var instruction in Instructions)
+            var orderedInstructions = Instructions.OrderBy(x => x.Opcode);
+
+            foreach (var instruction in orderedInstructions)
             {
                 var instructionCode = InstructionCode.FromInstruction(instruction);
 
                 sb.AppendLine($"                // {instructionCode.Comment}");
 
-                for (var i = 0; i < instructionCode.Lines.Length; i++)
+                for (var i = 0; i < instructionCode.Lines.Count; i++)
                 {
                     var line = instructionCode.Lines[i];
-                    if (line == string.Empty)
+                    if (line.Count == 0)
                     {
-                        break;
+                        throw new InvalidOperationException();
+                        //break;
                     }
 
-                    sb.AppendLine($"                case (0x{instruction.Opcode:X2}, {i}):");
-                    sb.AppendLine($"                    {line}");
+                    sb.AppendLine($"                case (0x{instruction.Opcode:X2} << 3) | {i}:");
+                    foreach (var segment in line)
+                    {
+                        sb.AppendLine($"                    {segment}");
+                    }
                     sb.AppendLine("                    break;");
-                    sb.AppendLine("");
                 }
+
+                // Fill in remaining slots, so that our switch statement has an unbroken sequence of integers.
+                for (var i = instructionCode.Lines.Count; i < 8; i++)
+                {
+                    sb.AppendLine($"                case (0x{instruction.Opcode:X2} << 3) | {i}:");
+                    sb.AppendLine("                    Debug.Assert(false);");
+                    sb.AppendLine("                    break;");
+                }
+
+                sb.AppendLine("");
             }
 
             sb.AppendLine("                default:");
@@ -57,11 +69,7 @@ namespace Aemula.Chips.Mos6502.Generators
             sb.AppendLine("    }");
             sb.AppendLine("}");
 
-            var sourceText = SourceText.From(sb.ToString(), Encoding.UTF8);
-
-            File.WriteAllText(@"C:\CodePersonal\Aemula\src\Aemula.Chips.Mos6502\obj\Test.cs", sb.ToString());
-
-            context.AddSource("Mos6502.InstructionExecution.g.cs", sourceText);
+            File.WriteAllText(@"..\..\..\..\Aemula.Chips.Mos6502\Mos6502.generated.cs", sb.ToString());
         }
 
         private enum AddressingMode
@@ -482,21 +490,28 @@ namespace Aemula.Chips.Mos6502.Generators
 
         private sealed class InstructionCodeBuilder
         {
-            private readonly List<string> _lines = new List<string>();
+            private readonly List<List<string>> _lines = new List<List<string>>();
 
-            public void Add(string text)
+            public string Description { get; private set; }
+            public List<List<string>> Lines => _lines;
+
+            public void Add(params string[] text)
             {
-                _lines.Add(text);
+                _lines.Add(text.ToList());
             }
 
-            public void ModifyPrevious(string text)
+            public void ModifyPrevious(params string[] text)
             {
                 var numLines = _lines.Count;
-                if (_lines[numLines - 1] != string.Empty)
+                if (_lines[numLines - 1] == null)
                 {
-                    _lines[numLines - 1] += " ";
+                    _lines[numLines - 1] = new List<string>();
                 }
-                _lines[numLines - 1] += text;
+                if (_lines[numLines - 1].Count == 1 && _lines[numLines - 1][0] == "")
+                {
+                    _lines[numLines - 1].Clear();
+                }
+                _lines[numLines - 1].AddRange(text);
             }
 
             public void EncodeOperation(string mnemonic, AddressingMode addressingMode)
@@ -507,149 +522,389 @@ namespace Aemula.Chips.Mos6502.Generators
                 {
                     // Special cases
                     case "BRK":
-                        Add("Brk0();");
-                        Add("Brk1();");
-                        Add("Brk2();");
-                        Add("Brk3();");
-                        Add("Brk4();");
-                        Add("Brk5();");
-                            break;
+                        Add("if ((_brkFlags & (BrkFlags.Irq | BrkFlags.Nmi)) == 0)",
+                            "{",
+                            "    PC += 1;",
+                            "}",
+                            "Address.Hi = 0x01;",
+                            "Address.Lo = SP--;",
+                            "_data = PC.Hi;",
+                            "_rw = (_brkFlags & BrkFlags.Reset) != 0;");
+                        Add("Address.Lo = SP--;",
+                            "_data = PC.Lo;",
+                            "_rw = (_brkFlags & BrkFlags.Reset) != 0;");
+                        Add("Address.Lo = SP--;",
+                            "_data = P.AsByte(_brkFlags == BrkFlags.None);",
+                            "_ad.Hi = 0xFF;",
+                            "if ((_brkFlags & BrkFlags.Reset) != 0)",
+                            "{",
+                            "    _ad.Lo = 0xFC;",
+                            "}",
+                            "else",
+                            "{",
+                            "    _rw = false;",
+                            "    _ad.Lo = (_brkFlags & BrkFlags.Nmi) != 0",
+                            "        ? (byte)0xFA",
+                            "        : (byte)0xFE;",
+                            "}");
+                        Add("Address = _ad;", "_ad.Lo += 1;", "P.I = true;", "_brkFlags = BrkFlags.None;");
+                        Add("Address.Lo = _ad.Lo;", "_ad.Lo = _data;");
+                        Add("PC.Hi = _data;", "PC.Lo = _ad.Lo;");
+                        break;
 
-                    case "JMP": 
-                        ModifyPrevious("Jmp();");
+                    case "JMP":
+                        ModifyPrevious("PC = Address;");
                         break;
 
                     case "JSR":
-                        Add("Jsr0();");
-                        Add("Jsr1();");
-                        Add("Jsr2();");
-                        Add("Jsr3();");
-                        Add("Jsr4();");
-                        Add("Jsr5();");
+                        // Read low byte of target address.
+                        Add("Address = PC++;");
+                        // Put SP on address bus.
+                        Add("Address.Hi = 0x01;", "Address.Lo = SP;", "_ad.Lo = _data;");
+                        // Write PC high byte to stack.
+                        Add("Address.Lo = SP--;", "_data = PC.Hi;", "_rw = false;");
+                        // Write PC low byte to stack.
+                        Add("Address.Lo = SP--;", "_data = PC.Lo;", "_rw = false;");
+                        // Read high byte of target address.
+                        Add("Address = PC;");
+                        Add("PC.Hi = _data;", "PC.Lo = _ad.Lo;");
                         break;
 
                     case "PLA":
-                        Add("Pla0();");
-                        Add("Pla1();");
-                        Add("Pla2();");
+                        Add("Address.Hi = 0x01;",
+                            "Address.Lo = SP++;");
+                        Add("Address.Lo = SP;");
+                        Add("A = P.SetZeroNegativeFlags(_data);");
                         break;
 
                     case "PLP":
-                        Add("Plp0();");
-                        Add("Plp1();");
-                        Add("Plp2();");
+                        Add("Address.Hi = 0x01;",
+                            "Address.Lo = SP++;");
+                        Add("Address.Lo = SP;");
+                        Add("P.SetFromByte(P.SetZeroNegativeFlags(_data));");
                         break;
 
                     case "RTI":
-                        Add("Rti0();");
-                        Add("Rti1();");
-                        Add("Rti2();");
-                        Add("Rti3();");
-                        Add("Rti4();");
+                        Add("Address.Hi = 0x01;", "Address.Lo = SP++;");
+                        Add("Address.Lo = SP++;");
+                        Add("Address.Lo = SP++;", "P.SetFromByte(_data);");
+                        Add("Address.Lo = SP;", "_ad.Lo = _data;");
+                        Add("PC.Hi = _data;", "PC.Lo = _ad.Lo;");
                         break;
 
                     case "RTS":
-                        Add("Rts0();");
-                        Add("Rts1();");
-                        Add("Rts2();");
-                        Add("Rts3();");
+                        Add("Address.Hi = 0x01;", "Address.Lo = SP++;");
+                        Add("Address.Lo = SP++;");
+                        Add("Address.Lo = SP;", "_ad.Lo = _data;");
+                        Add("PC.Hi = _data;", "PC.Lo = _ad.Lo;", "Address = PC++;");
                         Add("");
                         break;
 
                     case "CLC":
-                    case "CLD":
-                    case "CLI":
-                    case "CLV":
-                    case "SED":
-                    case "SEI":
-                    case "SLC":
-                    case "DEX":
-                    case "DEY":
-                    case "INX":
-                    case "INY":
-                    case "TAX":
-                    case "TAY":
-                    case "TSX":
-                    case "TXA":
-                    case "TXS":
-                    case "TYA":
-                    case "PHA":
-                    case "PHP":
-                        Add($"{GetMethodName()}();");
+                        Add("P.C = false;");
                         break;
 
-                    // Write memory
-                    case "SAX":
-                    case "SHA":
-                    case "SHX":
-                    case "SHY":
-                    case "SHS":
+                    case "CLD":
+                        Add("P.D = false;");
+                        break;
+
+                    case "CLI":
+                        Add("P.I = false;");
+                        break;
+
+                    case "CLV":
+                        Add("P.V = false;");
+                        break;
+
+                    case "SED":
+                        Add("P.D = true;");
+                        break;
+
+                    case "SEI":
+                        Add("P.I = true;");
+                        break;
+
+                    case "SLC":
+                        Add("P.C = true;");
+                        break;
+
+                    case "DEX":
+                        Description = "Decrement X Register";
+                        Add("X = P.SetZeroNegativeFlags((byte)(X - 1));");
+                        break;
+
+                    case "DEY":
+                        Description = "Decrement Y Register";
+                        Add("Y = P.SetZeroNegativeFlags((byte)(Y - 1));");
+                        break;
+
+                    case "INX":
+                        Description = "Increment X Register";
+                        Add("X = P.SetZeroNegativeFlags((byte)(X + 1));");
+                        break;
+
+                    case "INY":
+                        Description = "Increment Y Register";
+                        Add("Y = P.SetZeroNegativeFlags((byte)(Y + 1));");
+                        break;
+
+                    case "PHA":
+                        Add("Address.Hi = 0x01;",
+                            "Address.Lo = SP--;",
+                            "_data = A;",
+                            "_rw = false;");
+                        break;
+
+                    case "PHP":
+                        Add("Address.Hi = 0x01;",
+                            "Address.Lo = SP--;",
+                            "_data = P.AsByte(true);",
+                            "_rw = false;");
+                        break;
+
+                    case "TAX":
+                        Description = "Transfer Accumulator to X";
+                        Add("X = P.SetZeroNegativeFlags(A);");
+                        break;
+
+                    case "TAY":
+                        Description = "Transfer Accumulator to Y";
+                        Add("Y = P.SetZeroNegativeFlags(A);");
+                        break;
+
+                    case "TSX":
+                        Description = "Transfer Stack Pointer to X";
+                        Add("X = P.SetZeroNegativeFlags(SP);");
+                        break;
+
+                    case "TXA":
+                        Description = "Transfer X to Accumulator";
+                        Add("A = P.SetZeroNegativeFlags(X);");
+                        break;
+
+                    case "TXS":
+                        Description = "Transfer X to Stack Pointer";
+                        Add("SP = X;");
+                        break;
+
+                    case "TYA":
+                        Description = "Transfer Y to Accumulator";
+                        Add("A = P.SetZeroNegativeFlags(Y);");
+                        break;
+
                     case "STA":
+                        Description = "Store Accumulator";
+                        ModifyPrevious("_data = A;", "_rw = false;");
+                        break;
+
                     case "STX":
+                        Description = "Store X Register";
+                        ModifyPrevious("_data = X;", "_rw = false;");
+                        break;
+
                     case "STY":
-                        ModifyPrevious($"{GetMethodName()}();");
+                        Description = "Store Y Register";
+                        ModifyPrevious("_data = Y;", "_rw = false;");
+                        break;
+
+                    case "SAX":
+                        Description = "Store Accumulator and X (undocumented)";
+                        ModifyPrevious("_data = (byte)(A & X);", "_rw = false;");
+                        break;
+
+                    case "SHA":
+                        ModifyPrevious(OpsSha);
+                        break;
+
+                    case "SHS":
+                        ModifyPrevious(new [] { "SP = (byte)(A & X);" }.Concat(OpsSha).ToArray());
+                        break;
+
+                    case "SHX":
+                        ModifyPrevious("_data = (byte)(X & (Address.Hi + 1));", "_rw = false;");
+                        break;
+
+                    case "SHY":
+                        ModifyPrevious("_data = (byte)(Y & (Address.Hi + 1));", "_rw = false;");
+                        break;
+
+                    case "LAX":
+                        Description = "Load A and X Registers (undocumented)";
+                        Add("A = P.SetZeroNegativeFlags(_data);", "X = P.SetZeroNegativeFlags(_data);");
+                        break;
+
+                    case "LDA":
+                        Description = "Load Accumulator";
+                        Add("A = P.SetZeroNegativeFlags(_data);");
+                        break;
+
+                    case "LDX":
+                        Description = "Load X Register";
+                        Add("X = P.SetZeroNegativeFlags(_data);");
+                        break;
+
+                    case "LDY":
+                        Description = "Load Y Register";
+                        Add("Y = P.SetZeroNegativeFlags(_data);");
+                        break;
+
+                    case "AND":
+                        Description = "Logical AND";
+                        Add(OpsAnd);
+                        break;
+
+                    case "EOR":
+                        Description = "Exclusive OR";
+                        Add("A = P.SetZeroNegativeFlags((byte)(A ^ _data));");
+                        break;
+
+                    case "ORA":
+                        Description = "Logical Inclusive OR";
+                        Add("A = P.SetZeroNegativeFlags((byte)(A | _data));");
+                        break;
+
+                    case "BIT":
+                        Description = "Bit Test";
+                        Add("P.Z = (A & _data) == 0;",
+                            "P.V = (_data & 0x40) == 0x40;",
+                            "P.N = (_data & 0x80) == 0x80;");
+                        break;
+
+                    case "CMP":
+                        Description = "Compare";
+                        Add(OpsCmp);
+                        break;
+
+                    case "CPX":
+                        Description = "Compare X Register";
+                        Add(GetOpsCmp("X"));
+                        break;
+
+                    case "CPY":
+                        Description = "Compare Y Register";
+                        Add(GetOpsCmp("Y"));
+                        break;
+
+                    case "LXA":
+                        Add("A = (byte)((A | 0xEE) & _data);",
+                            "X = A;",
+                            "P.SetZeroNegativeFlags(A);");
+                        break;
+
+                    case "SBX":
+                        Add("tempInt32 = (A & X) - _data;",
+                            "X = (byte)tempInt32;",
+                            "P.C = tempInt32 >= 0;",
+                            "P.SetZeroNegativeFlags(X);");
+                        break;
+
+                    case "LAS":
+                        Add("A = (byte)(_data & SP);",
+                            "X = A;",
+                            "SP = A;",
+                            "P.SetZeroNegativeFlags(A);");
+                        break;
+
+                    case "ANC":
+                        Add("A &= _data;",
+                            "P.SetZeroNegativeFlags(A);",
+                            "P.C = (A & 0x80) != 0;");
+                        break;
+
+                    case "ANE":
+                        Add("A = (byte)((A | 0xEE) & X & _data);",
+                            "P.SetZeroNegativeFlags(A);");
                         break;
 
                     case "ADC":
-                    case "AND":
-                    case "BIT":
-                    case "CMP":
-                    case "CPX":
-                    case "CPY":
-                    case "EOR":
-                    case "LAX":
-                    case "LDA":
-                    case "LDX":
-                    case "LDY":
-                    case "ORA":
                     case "SBC":
-                    case "ANC":
-                    case "ANE":
                     case "ARR":
                     case "ASR":
-                    case "LAS":
-                    case "LXA":
-                    case "SBX":
                         Add($"{GetMethodName()}();");
+                        break;
+
+                    case "ROL" when addressingMode == AddressingMode.Accumulator:
+                        Description = "Rotate Left";
+                        Add("A = RolHelper(A);");
                         break;
 
                     // Accumulator
                     case "ASL" when addressingMode == AddressingMode.Accumulator:
                     case "LSR" when addressingMode == AddressingMode.Accumulator:
-                    case "ROL" when addressingMode == AddressingMode.Accumulator:
                     case "ROR" when addressingMode == AddressingMode.Accumulator:
                         Add($"{GetMethodName()}a();");
                         break;
 
+                    case "DEC":
+                        Description = "Decrement Memory";
+                        AddRmwCycle();
+                        Add(OpsDec);
+                        break;
+
+                    case "DCP":
+                        Description = "Decrement Memory then Compare (undocumented)";
+                        AddRmwCycle();
+                        Add(OpsDec.Concat(OpsCmp).ToArray());
+                        break;
+
+                    case "INC":
+                        Description = "Increment Memory";
+                        AddRmwCycle();
+                        Add(OpsInc);
+                        break;
+
+                    case "ISB":
+                        Description = "Increment Memory then Subtract (undocumented, also known as ISC)";
+                        AddRmwCycle();
+                        Add(OpsInc.Concat(new [] { "Sbc();" }).ToArray());
+                        break;
+
+                    case "ROL":
+                        Description = "Rotate Left";
+                        AddRmwCycle();
+                        Add(OpsRol);
+                        break;
+
+                    case "RLA":
+                        Description = "ROL + AND (undocumented)";
+                        Add(OpsRol.Concat(OpsAnd).ToArray());
+                        break;
+
                     // Read / modify / write memory
                     case "ASL":
-                    case "DEC":
-                    case "DCP":
-                    case "INC":
-                    case "ISB":
                     case "LSR":
-                    case "RLA":
-                    case "ROL":
                     case "ROR":
                     case "RRA":
                     case "SLO":
                     case "SRE":
-                        Add("RmwCycle();");
+                        AddRmwCycle();
                         Add($"{GetMethodName()}();");
                         break;
 
                     // Branch
                     case "BCC":
+                        EncodeBranch("C", false);
+                        break;
                     case "BCS":
+                        EncodeBranch("C", true);
+                        break;
                     case "BEQ":
+                        EncodeBranch("Z", true);
+                        break;
                     case "BMI":
+                        EncodeBranch("N", true);
+                        break;
                     case "BNE":
+                        EncodeBranch("Z", false);
+                        break;
                     case "BPL":
+                        EncodeBranch("N", false);
+                        break;
                     case "BVC":
+                        EncodeBranch("V", false);
+                        break;
                     case "BVS":
-                        Add($"Branch0{GetMethodName()}();");
-                        Add("Branch1();");
-                        Add("Branch2();");
+                        EncodeBranch("V", true);
                         break;
 
                     // Invalid
@@ -657,7 +912,7 @@ namespace Aemula.Chips.Mos6502.Generators
                         break;
 
                     case "NOP":
-                        Add("Nop();");
+                        Add("");
                         break;
 
                     default:
@@ -665,108 +920,166 @@ namespace Aemula.Chips.Mos6502.Generators
                 }
             }
 
+            private void EncodeBranch(string register, bool value)
+            {
+                Add("Address = PC;",
+                    "_ad = PC + (sbyte)_data;",
+                    $"if (P.{register} != {value.ToString().ToLowerInvariant()})",
+                    "{",
+                    "    FetchNextInstruction();",
+                    "}");
+
+                // Executed if branch was taken.
+                Add("Address.Lo = _ad.Lo;",
+                    "if (_ad.Hi == PC.Hi)",
+                    "{",
+                    "    PC = _ad;",
+                    "    FetchNextInstruction();",
+                    "}");
+
+                // Only executed if page was crossed.
+                Add("PC = _ad;");
+            }
+
+            private void AddRmwCycle()
+            {
+                Add("_ad.Lo = _data;", "_rw = false;");
+            }
+
+            private static string[] GetOpsCmp(string register) => new[]
+            {
+                $"P.SetZeroNegativeFlags((byte)({register} - _data));",
+                $"P.C = {register} >= _data;"
+            };
+
+            private static readonly string[] OpsAnd =
+            {
+                "A = P.SetZeroNegativeFlags((byte)(A & _data));"
+            };
+
+            private static readonly string[] OpsCmp = GetOpsCmp("A");
+
+            private static readonly string[] OpsDec =
+            {
+                "_data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));",
+                "_rw = false;"
+            };
+
+            private static readonly string[] OpsInc =
+            {
+                "_data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));",
+                "_rw = false;"
+            };
+
+            private static readonly string[] OpsRol =
+            {
+                "_data = RolHelper(_ad.Lo);",
+                "_rw = false;"
+            };
+
+            private static readonly string[] OpsSha =
+            {
+                "_data = (byte)(A & X & (Address.Hi + 1));",
+                "_rw = false;"
+            };
+
             public void EncodeAddressingMode(Instruction instruction)
             {
                 switch (instruction.AddressingMode)
                 {
                     case AddressingMode.None:
                     case AddressingMode.Accumulator:
-                        Add("AddressingModeNoneCycle0();");
+                        Add("Address = PC;");
                         break;
 
                     case AddressingMode.Immediate:
-                        Add("AddressingModeImmediateCycle0();");
+                        Add("Address = PC++;");
                         break;
 
                     case AddressingMode.ZeroPage:
-                        Add("AddressingModeZeroPageCycle0();");
-                        Add("AddressingModeZeroPageCycle1();");
+                        Add("Address = PC++;");
+                        Add("Address = _data;");
                         break;
 
                     case AddressingMode.ZeroPageX:
-                        Add("AddressingModeZeroPageIndexedCycle0();");
-                        Add("AddressingModeZeroPageIndexedCycle1();");
-                        Add("AddressingModeZeroPageXCycle2();");
+                        Add("Address = PC++;");
+                        Add("_ad = _data;", "Address = _ad;");
+                        Add("Address = (byte)(_ad.Lo + X);");
                         break;
 
                     case AddressingMode.ZeroPageY:
-                        Add("AddressingModeZeroPageIndexedCycle0();");
-                        Add("AddressingModeZeroPageIndexedCycle1();");
-                        Add("AddressingModeZeroPageYCycle2();");
+                        Add("Address = PC++;");
+                        Add("_ad = _data;", "Address = _ad;");
+                        Add("Address = (byte)(_ad.Lo + Y);");
                         break;
 
                     case AddressingMode.Absolute:
-                        Add("AddressingModeAbsoluteCycle0();");
-                        Add("AddressingModeAbsoluteCycle1();");
-                        Add("AddressingModeAbsoluteCycle2();");
+                        Add("Address = PC++;");
+                        Add("Address = PC++;", "_ad.Lo = _data;");
+                        Add("Address.Hi = _data;", "Address.Lo = _ad.Lo;");
                         break;
 
                     case AddressingMode.AbsoluteX:
-                        Add("AddressingModeAbsoluteIndexedCycle0();");
-                        Add("AddressingModeAbsoluteIndexedCycle1();");
-                        Add("AddressingModeAbsoluteIndexedCycle2(X);");
+                        Add("Address = PC++;");
+                        Add("Address = PC++;", "_ad.Lo = _data;");
+                        Add("_ad.Hi = _data;", "Address.Hi = _ad.Hi;", "Address.Lo = (byte)(_ad.Lo + X);");
                         if (instruction.MemoryAccess == MemoryAccess.Read)
                         {
-                            ModifyPrevious("AddressingModeAbsoluteIndexedCycle2Read(X);");
+                            ModifyPrevious("IncrementTimingRegisterIfNoPageCrossing(X);");
                         }
-                        Add("AddressingModeAbsoluteIndexedCycle3(X);");
+                        Add("Address = _ad + X;");
                         break;
 
                     case AddressingMode.AbsoluteY:
-                        Add("AddressingModeAbsoluteIndexedCycle0();");
-                        Add("AddressingModeAbsoluteIndexedCycle1();");
-                        Add("AddressingModeAbsoluteIndexedCycle2(Y);");
+                        Add("Address = PC++;");
+                        Add("Address = PC++;", "_ad.Lo = _data;");
+                        Add("_ad.Hi = _data;", "Address.Hi = _ad.Hi;", "Address.Lo = (byte)(_ad.Lo + Y);");
                         if (instruction.MemoryAccess == MemoryAccess.Read)
                         {
-                            ModifyPrevious("AddressingModeAbsoluteIndexedCycle2Read(Y);");
+                            ModifyPrevious("IncrementTimingRegisterIfNoPageCrossing(Y);");
                         }
-                        Add("AddressingModeAbsoluteIndexedCycle3(Y);");
+                        Add("Address = _ad + Y;");
                         break;
 
                     case AddressingMode.IndexedIndirectX:
-                        Add("AddressingModeIndexedIndirectXCycle0();");
-                        Add("AddressingModeIndexedIndirectXCycle1();");
-                        Add("AddressingModeIndexedIndirectXCycle2();");
-                        Add("AddressingModeIndexedIndirectXCycle3();");
-                        Add("AddressingModeIndexedIndirectXCycle4();");
+                        Add("Address = PC++;");
+                        Add("_ad = _data;", "Address = _ad;");
+                        Add("_ad.Lo += X;", "Address.Lo = _ad.Lo;");
+                        Add("Address.Lo = (byte)(_ad.Lo + 1);", "_ad.Lo = _data;");
+                        Add("Address.Hi = _data;", "Address.Lo = _ad.Lo;");
                         break;
 
                     case AddressingMode.IndirectIndexedY:
-                        Add("AddressingModeIndirectIndexedYCycle0();");
-                        Add("AddressingModeIndirectIndexedYCycle1();");
-                        Add("AddressingModeIndirectIndexedYCycle2();");
-                        Add("AddressingModeIndirectIndexedYCycle3();");
+                        Add("Address = PC++;");
+                        Add("_ad = _data;", "Address = _ad;");
+                        Add("Address.Lo = (byte)(_ad.Lo + 1);", "_ad.Lo = _data;");
+                        Add("_ad.Hi = _data;", "Address.Hi = _ad.Hi;", "Address.Lo = (byte)(_ad.Lo + Y);");
                         if (instruction.MemoryAccess == MemoryAccess.Read)
                         {
-                            ModifyPrevious("AddressingModeIndirectIndexedYCycle3Read();");
+                            ModifyPrevious("IncrementTimingRegisterIfNoPageCrossing(Y);");
                         }
-                        Add("AddressingModeIndirectIndexedYCycle4();");
+                        Add("Address = _ad + Y;");
                         break;
 
                     case AddressingMode.Indirect:
-                        Add("AddressingModeIndirectCycle0();");
-                        Add("AddressingModeIndirectCycle1();");
-                        Add("AddressingModeIndirectCycle2();");
-                        Add("AddressingModeIndirectCycle3();");
-                        Add("AddressingModeIndirectCycle4();");
+                        Add("Address = PC++;");
+                        Add("Address = PC++;", "_ad.Lo = _data;");
+                        Add("_ad.Hi = _data;", "Address = _ad;");
+                        Add("Address.Lo = (byte)(_ad.Lo + 1);", "_ad.Lo = _data;");
+                        Add("Address.Hi = _data;", "Address.Lo = _ad.Lo;");
                         break;
 
                     case AddressingMode.JSR:
                         break;
 
                     case AddressingMode.Invalid:
-                        Add("AddressingModeInvalidCycle0();");
-                        Add("AddressingModeInvalidCycle1();");
+                        Add("Address = PC;");
+                        Add("Address.Hi = 0xFF;", "Address.Lo = 0xFF;", "_data = 0xFF;", "_ir--;");
                         break;
 
                     default:
                         throw new InvalidOperationException();
                 }
-            }
-
-            public string[] ToArray()
-            {
-                return _lines.ToArray();
             }
         }
 
@@ -793,13 +1106,18 @@ namespace Aemula.Chips.Mos6502.Generators
                         break;
                 }
 
-                return new InstructionCode(comment, codeBuilder.ToArray());
+                if (codeBuilder.Description != null)
+                {
+                    comment += " - " + codeBuilder.Description;
+                }
+
+                return new InstructionCode(comment, codeBuilder.Lines);
             }
 
             public string Comment { get; }
-            public string[] Lines { get; }
+            public List<List<string>> Lines { get; }
 
-            private InstructionCode(string comment, string[] lines)
+            private InstructionCode(string comment, List<List<string>> lines)
             {
                 Comment = comment;
                 Lines = lines;

@@ -29,5 +29,21 @@ namespace Aemula
                 Value = (ushort)(lhs.Value + rhs)
             };
         }
+
+        public static SplitUInt16 operator ++(SplitUInt16 lhs)
+        {
+            return new SplitUInt16
+            {
+                Value = (ushort)(lhs.Value + 1)
+            };
+        }
+
+        public static implicit operator SplitUInt16(byte value)
+        {
+            return new SplitUInt16
+            {
+                Value = value
+            };
+        }
     }
 }

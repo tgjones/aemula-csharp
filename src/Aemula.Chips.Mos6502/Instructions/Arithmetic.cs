@@ -94,55 +94,5 @@
                 DoSbcDecimal(_data);
             }
         }
-
-        /// <summary>
-        /// DEC - Decrement Memory
-        /// </summary>
-        private void Dec()
-        {
-            _data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
-            _rw = false;
-        }
-
-        /// <summary>
-        /// DEX - Decrement X Register
-        /// </summary>
-        private void Dex()
-        {
-            X = P.SetZeroNegativeFlags((byte)(X - 1));
-        }
-
-        /// <summary>
-        /// DEY - Decrement Y Register
-        /// </summary>
-        private void Dey()
-        {
-            Y = P.SetZeroNegativeFlags((byte)(Y - 1));
-        }
-
-        /// <summary>
-        /// INC - Increment Memory
-        /// </summary>
-        private void Inc()
-        {
-            _data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
-            _rw = false;
-        }
-
-        /// <summary>
-        /// INX - Increment X Register
-        /// </summary>
-        private void Inx()
-        {
-            X = P.SetZeroNegativeFlags((byte)(X + 1));
-        }
-
-        /// <summary>
-        /// INY - Increment Y Register
-        /// </summary>
-        private void Iny()
-        {
-            Y = P.SetZeroNegativeFlags((byte)(Y + 1));
-        }
     }
 }

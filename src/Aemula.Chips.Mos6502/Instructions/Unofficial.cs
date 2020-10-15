@@ -2,19 +2,6 @@
 {
     partial class Mos6502
     {
-        private void Anc()
-        {
-            A &= _data;
-            P.SetZeroNegativeFlags(A);
-            P.C = (A & 0x80) != 0;
-        }
-
-        private void Ane()
-        {
-            A = (byte)((A | 0xEE) & X & _data);
-            P.SetZeroNegativeFlags(A);
-        }
-
         private void Arr()
         {
             And();
@@ -78,86 +65,12 @@
         }
 
         /// <summary>
-        /// DCP - Decrement Memory then Compare (undocumented)
-        /// </summary>
-        private void Dcp()
-        {
-            Dec();
-            Cmp();
-        }
-
-        /// <summary>
-        /// ISB (also known as ISC) - Increment Memory then Subtract (undocumented)
-        /// </summary>
-        private void Isb()
-        {
-            Inc();
-            Sbc();
-        }
-
-        private void Las()
-        {
-            A = (byte)(_data & SP);
-            X = A;
-            SP = A;
-            P.SetZeroNegativeFlags(A);
-        }
-
-        private void Lxa()
-        {
-            A = (byte)((A | 0xEE) & _data);
-            X = A;
-            P.SetZeroNegativeFlags(A);
-        }
-
-        /// <summary>
-        /// RLA - ROL + AND (undocumented)
-        /// </summary>
-        private void Rla()
-        {
-            Rol();
-            And();
-        }
-
-        /// <summary>
         /// RRA - ROR + ADC (undocumented)
         /// </summary>
         private void Rra()
         {
             Ror();
             Adc();
-        }
-
-        private void Sbx()
-        {
-            var temp = (A & X) - _data;
-            X = (byte)temp;
-            P.C = temp >= 0;
-            P.SetZeroNegativeFlags(X);
-        }
-
-        private void Sha()
-        {
-            _data = (byte)(A & X & (Address.Hi + 1));
-            _rw = false;
-        }
-
-        private void Shs()
-        {
-            SP = (byte)(A & X);
-            Sha();
-        }
-
-        private void Shx()
-        {
-            _data = (byte)(X & (Address.Hi + 1));
-            _rw = false;
-        }
-
-        private void Shy()
-        {
-            _data = (byte)(Y & (Address.Hi + 1));
-            _rw = false;
         }
 
         /// <summary>
