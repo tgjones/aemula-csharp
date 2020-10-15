@@ -1,6 +1,8 @@
 ﻿// This file contains methods for the more complex opcodes.
 // Simpler operations are generated inline in Mos6502.generated.cs.
 
+using System.Runtime.CompilerServices;
+
 namespace Aemula.Chips.Mos6502
 {
     partial class Mos6502
@@ -8,14 +10,14 @@ namespace Aemula.Chips.Mos6502
         /// <summary>
         /// AND - Logical AND
         /// </summary>
-        private void And()
+        private void And(in Mos6502Pins pins)
         {
-            A = P.SetZeroNegativeFlags((byte)(A & _data));
+            A = P.SetZeroNegativeFlags((byte)(A & pins.Data));
         }
 
-        private void Arr()
+        private void Arr(in Mos6502Pins pins)
         {
-            And();
+            And(pins);
 
             // http://www.6502.org/users/andre/petindex/local/64doc.txt
             if (_bcdEnabled && P.D)
@@ -110,15 +112,15 @@ namespace Aemula.Chips.Mos6502
         /// <summary>
         /// ADC - Add with Carry
         /// </summary>
-        private void Adc()
+        private void Adc(in Mos6502Pins pins)
         {
             if (!P.D || !_bcdEnabled)
             {
-                DoAdcBinary(_data);
+                DoAdcBinary(pins.Data);
             }
             else
             {
-                DoAdcDecimal(_data);
+                DoAdcDecimal(pins.Data);
             }
         }
 
@@ -150,15 +152,15 @@ namespace Aemula.Chips.Mos6502
         /// <summary>
         /// SBC - Subtract with Carry
         /// </summary>
-        private void Sbc()
+        private void Sbc(in Mos6502Pins pins)
         {
             if (!P.D || !_bcdEnabled)
             {
-                DoAdcBinary((byte)~_data);
+                DoAdcBinary((byte)~pins.Data);
             }
             else
             {
-                DoSbcDecimal(_data);
+                DoSbcDecimal(pins.Data);
             }
         }
 
@@ -194,6 +196,41 @@ namespace Aemula.Chips.Mos6502
         private void Rora()
         {
             A = RorHelper(A);
+        }
+
+        /// <summary>
+        /// Increments the timing register (which has the effect of skipping the next instruction cycle)
+        /// if no page boundary is crossed when <paramref name="addend"/> is added to <see cref="_ad"/>.
+        /// 
+        /// This implementation goes to some effort to avoid branching.
+        ///
+        /// Thanks to Andre Weissflog's code at
+        /// https://github.com/floooh/chips/blob/fdef73e0e65ebb5aa2bf33e226ba5b108a7a43fb/codegen/m6502_gen.py#L208
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void IncrementTimingRegisterIfNoPageCrossing(byte addend)
+        {
+            // Original high-byte
+            var original = _ad.Hi;
+
+            // High-byte after adding value
+            var modified = (_ad + addend).Hi;
+
+            // Delta will be either 0 (if it didn't cross page) or -1 (if it did).
+            var delta = original - modified;
+
+            // Increment will be either 1 (if it didn't cross page) or 0 (if it did).
+            var timingRegisterIncrement = ~delta & 1;
+
+            _tr += (byte)timingRegisterIncrement;
+        }
+
+
+
+        private void FetchNextInstruction(ref Mos6502Pins pins)
+        {
+            pins.Address = PC;
+            pins.Sync = true;
         }
     }
 }

@@ -5,7 +5,7 @@ namespace Aemula.Chips.Mos6502
 {
     partial class Mos6502
     {
-        private void ExecuteInstruction()
+        private void ExecuteInstruction(ref Mos6502Pins pins)
         {
             int tempInt32 = 0;
             
@@ -13,26 +13,26 @@ namespace Aemula.Chips.Mos6502
             {
                 // BRK 
                 case (0x00 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x00 << 3) | 1:
                     if ((_brkFlags & (BrkFlags.Irq | BrkFlags.Nmi)) == 0)
                     {
                         PC += 1;
                     }
-                    Address.Hi = 0x01;
-                    Address.Lo = SP--;
-                    _data = PC.Hi;
-                    _rw = (_brkFlags & BrkFlags.Reset) != 0;
+                    pins.Address.Hi = 0x01;
+                    pins.Address.Lo = SP--;
+                    pins.Data = PC.Hi;
+                    pins.RW = (_brkFlags & BrkFlags.Reset) != 0;
                     break;
                 case (0x00 << 3) | 2:
-                    Address.Lo = SP--;
-                    _data = PC.Lo;
-                    _rw = (_brkFlags & BrkFlags.Reset) != 0;
+                    pins.Address.Lo = SP--;
+                    pins.Data = PC.Lo;
+                    pins.RW = (_brkFlags & BrkFlags.Reset) != 0;
                     break;
                 case (0x00 << 3) | 3:
-                    Address.Lo = SP--;
-                    _data = P.AsByte(_brkFlags == BrkFlags.None);
+                    pins.Address.Lo = SP--;
+                    pins.Data = P.AsByte(_brkFlags == BrkFlags.None);
                     _ad.Hi = 0xFF;
                     if ((_brkFlags & BrkFlags.Reset) != 0)
                     {
@@ -40,26 +40,26 @@ namespace Aemula.Chips.Mos6502
                     }
                     else
                     {
-                        _rw = false;
+                        pins.RW = false;
                         _ad.Lo = (_brkFlags & BrkFlags.Nmi) != 0
                             ? (byte)0xFA
                             : (byte)0xFE;
                     }
                     break;
                 case (0x00 << 3) | 4:
-                    Address = _ad;
+                    pins.Address = _ad;
                     _ad.Lo += 1;
                     P.I = true;
                     _brkFlags = BrkFlags.None;
                     break;
                 case (0x00 << 3) | 5:
-                    Address.Lo = _ad.Lo;
-                    _ad.Lo = _data;
+                    pins.Address.Lo = _ad.Lo;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x00 << 3) | 6:
-                    PC.Hi = _data;
+                    PC.Hi = pins.Data;
                     PC.Lo = _ad.Lo;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x00 << 3) | 7:
                     Debug.Assert(false);
@@ -67,27 +67,27 @@ namespace Aemula.Chips.Mos6502
 
                 // ORA (zp,X) - Logical Inclusive OR
                 case (0x01 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x01 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x01 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x01 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x01 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x01 << 3) | 5:
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x01 << 3) | 6:
                     Debug.Assert(false);
@@ -98,14 +98,14 @@ namespace Aemula.Chips.Mos6502
 
                 // JAM invalid
                 case (0x02 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x02 << 3) | 1:
-                    Address.Hi = 0xFF;
-                    Address.Lo = 0xFF;
-                    _data = 0xFF;
+                    pins.Address.Hi = 0xFF;
+                    pins.Address.Lo = 0xFF;
+                    pins.Data = 0xFF;
                     _ir--;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x02 << 3) | 2:
                     Debug.Assert(false);
@@ -128,46 +128,46 @@ namespace Aemula.Chips.Mos6502
 
                 // SLO (zp,X) - ASL + ORA (undocumented)
                 case (0x03 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x03 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x03 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x03 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x03 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x03 << 3) | 5:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x03 << 3) | 6:
-                    _data = AslHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
+                    pins.Data = AslHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
                     break;
                 case (0x03 << 3) | 7:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
 
                 // NOP zp
                 case (0x04 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x04 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x04 << 3) | 2:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x04 << 3) | 3:
                     Debug.Assert(false);
@@ -187,14 +187,14 @@ namespace Aemula.Chips.Mos6502
 
                 // ORA zp - Logical Inclusive OR
                 case (0x05 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x05 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x05 << 3) | 2:
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x05 << 3) | 3:
                     Debug.Assert(false);
@@ -214,21 +214,21 @@ namespace Aemula.Chips.Mos6502
 
                 // ASL zp - Arithmetic Shift Left
                 case (0x06 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x06 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x06 << 3) | 2:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x06 << 3) | 3:
-                    _data = AslHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = AslHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x06 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x06 << 3) | 5:
                     Debug.Assert(false);
@@ -242,22 +242,22 @@ namespace Aemula.Chips.Mos6502
 
                 // SLO zp - ASL + ORA (undocumented)
                 case (0x07 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x07 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x07 << 3) | 2:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x07 << 3) | 3:
-                    _data = AslHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
+                    pins.Data = AslHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
                     break;
                 case (0x07 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x07 << 3) | 5:
                     Debug.Assert(false);
@@ -271,16 +271,16 @@ namespace Aemula.Chips.Mos6502
 
                 // PHP 
                 case (0x08 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x08 << 3) | 1:
-                    Address.Hi = 0x01;
-                    Address.Lo = SP--;
-                    _data = P.AsByte(true);
-                    _rw = false;
+                    pins.Address.Hi = 0x01;
+                    pins.Address.Lo = SP--;
+                    pins.Data = P.AsByte(true);
+                    pins.RW = false;
                     break;
                 case (0x08 << 3) | 2:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x08 << 3) | 3:
                     Debug.Assert(false);
@@ -300,11 +300,11 @@ namespace Aemula.Chips.Mos6502
 
                 // ORA # - Logical Inclusive OR
                 case (0x09 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x09 << 3) | 1:
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x09 << 3) | 2:
                     Debug.Assert(false);
@@ -327,11 +327,11 @@ namespace Aemula.Chips.Mos6502
 
                 // ASL  - Arithmetic Shift Left
                 case (0x0A << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x0A << 3) | 1:
                     A = AslHelper(A);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x0A << 3) | 2:
                     Debug.Assert(false);
@@ -354,13 +354,13 @@ namespace Aemula.Chips.Mos6502
 
                 // ANC #
                 case (0x0B << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x0B << 3) | 1:
-                    A &= _data;
+                    A &= pins.Data;
                     P.SetZeroNegativeFlags(A);
                     P.C = (A & 0x80) != 0;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x0B << 3) | 2:
                     Debug.Assert(false);
@@ -383,18 +383,18 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP abs
                 case (0x0C << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x0C << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x0C << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x0C << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x0C << 3) | 4:
                     Debug.Assert(false);
@@ -411,19 +411,19 @@ namespace Aemula.Chips.Mos6502
 
                 // ORA abs - Logical Inclusive OR
                 case (0x0D << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x0D << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x0D << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x0D << 3) | 3:
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x0D << 3) | 4:
                     Debug.Assert(false);
@@ -440,26 +440,26 @@ namespace Aemula.Chips.Mos6502
 
                 // ASL abs - Arithmetic Shift Left
                 case (0x0E << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x0E << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x0E << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x0E << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x0E << 3) | 4:
-                    _data = AslHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = AslHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x0E << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x0E << 3) | 6:
                     Debug.Assert(false);
@@ -470,27 +470,27 @@ namespace Aemula.Chips.Mos6502
 
                 // SLO abs - ASL + ORA (undocumented)
                 case (0x0F << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x0F << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x0F << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x0F << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x0F << 3) | 4:
-                    _data = AslHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
+                    pins.Data = AslHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
                     break;
                 case (0x0F << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x0F << 3) | 6:
                     Debug.Assert(false);
@@ -501,27 +501,27 @@ namespace Aemula.Chips.Mos6502
 
                 // BPL #
                 case (0x10 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x10 << 3) | 1:
-                    Address = PC;
-                    _ad = PC + (sbyte)_data;
+                    pins.Address = PC;
+                    _ad = PC + (sbyte)pins.Data;
                     if (P.N != false)
                     {
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0x10 << 3) | 2:
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     if (_ad.Hi == PC.Hi)
                     {
                         PC = _ad;
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0x10 << 3) | 3:
                     PC = _ad;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x10 << 3) | 4:
                     Debug.Assert(false);
@@ -538,28 +538,28 @@ namespace Aemula.Chips.Mos6502
 
                 // ORA (zp),Y - Logical Inclusive OR
                 case (0x11 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x11 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x11 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x11 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0x11 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x11 << 3) | 5:
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x11 << 3) | 6:
                     Debug.Assert(false);
@@ -570,14 +570,14 @@ namespace Aemula.Chips.Mos6502
 
                 // JAM invalid
                 case (0x12 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x12 << 3) | 1:
-                    Address.Hi = 0xFF;
-                    Address.Lo = 0xFF;
-                    _data = 0xFF;
+                    pins.Address.Hi = 0xFF;
+                    pins.Address.Lo = 0xFF;
+                    pins.Data = 0xFF;
                     _ir--;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x12 << 3) | 2:
                     Debug.Assert(false);
@@ -600,50 +600,50 @@ namespace Aemula.Chips.Mos6502
 
                 // SLO (zp),Y - ASL + ORA (undocumented)
                 case (0x13 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x13 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x13 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x13 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x13 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x13 << 3) | 5:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x13 << 3) | 6:
-                    _data = AslHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
+                    pins.Data = AslHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
                     break;
                 case (0x13 << 3) | 7:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
 
                 // NOP zp,X
                 case (0x14 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x14 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x14 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x14 << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x14 << 3) | 4:
                     Debug.Assert(false);
@@ -660,18 +660,18 @@ namespace Aemula.Chips.Mos6502
 
                 // ORA zp,X - Logical Inclusive OR
                 case (0x15 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x15 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x15 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x15 << 3) | 3:
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x15 << 3) | 4:
                     Debug.Assert(false);
@@ -688,25 +688,25 @@ namespace Aemula.Chips.Mos6502
 
                 // ASL zp,X - Arithmetic Shift Left
                 case (0x16 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x16 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x16 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x16 << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x16 << 3) | 4:
-                    _data = AslHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = AslHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x16 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x16 << 3) | 6:
                     Debug.Assert(false);
@@ -717,26 +717,26 @@ namespace Aemula.Chips.Mos6502
 
                 // SLO zp,X - ASL + ORA (undocumented)
                 case (0x17 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x17 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x17 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x17 << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x17 << 3) | 4:
-                    _data = AslHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
+                    pins.Data = AslHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
                     break;
                 case (0x17 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x17 << 3) | 6:
                     Debug.Assert(false);
@@ -747,11 +747,11 @@ namespace Aemula.Chips.Mos6502
 
                 // CLC 
                 case (0x18 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x18 << 3) | 1:
                     P.C = false;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x18 << 3) | 2:
                     Debug.Assert(false);
@@ -774,24 +774,24 @@ namespace Aemula.Chips.Mos6502
 
                 // ORA abs,Y - Logical Inclusive OR
                 case (0x19 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x19 << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x19 << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0x19 << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x19 << 3) | 4:
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x19 << 3) | 5:
                     Debug.Assert(false);
@@ -805,10 +805,10 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP 
                 case (0x1A << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x1A << 3) | 1:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x1A << 3) | 2:
                     Debug.Assert(false);
@@ -831,31 +831,31 @@ namespace Aemula.Chips.Mos6502
 
                 // SLO abs,Y - ASL + ORA (undocumented)
                 case (0x1B << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x1B << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x1B << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x1B << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x1B << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x1B << 3) | 5:
-                    _data = AslHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
+                    pins.Data = AslHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
                     break;
                 case (0x1B << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x1B << 3) | 7:
                     Debug.Assert(false);
@@ -863,23 +863,23 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP abs,X
                 case (0x1C << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x1C << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x1C << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0x1C << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x1C << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x1C << 3) | 5:
                     Debug.Assert(false);
@@ -893,24 +893,24 @@ namespace Aemula.Chips.Mos6502
 
                 // ORA abs,X - Logical Inclusive OR
                 case (0x1D << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x1D << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x1D << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0x1D << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x1D << 3) | 4:
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x1D << 3) | 5:
                     Debug.Assert(false);
@@ -924,30 +924,30 @@ namespace Aemula.Chips.Mos6502
 
                 // ASL abs,X - Arithmetic Shift Left
                 case (0x1E << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x1E << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x1E << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0x1E << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x1E << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x1E << 3) | 5:
-                    _data = AslHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = AslHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x1E << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x1E << 3) | 7:
                     Debug.Assert(false);
@@ -955,31 +955,31 @@ namespace Aemula.Chips.Mos6502
 
                 // SLO abs,X - ASL + ORA (undocumented)
                 case (0x1F << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x1F << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x1F << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0x1F << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x1F << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x1F << 3) | 5:
-                    _data = AslHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A | _data));
+                    pins.Data = AslHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | pins.Data));
                     break;
                 case (0x1F << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x1F << 3) | 7:
                     Debug.Assert(false);
@@ -987,30 +987,30 @@ namespace Aemula.Chips.Mos6502
 
                 // JSR 
                 case (0x20 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x20 << 3) | 1:
-                    Address.Hi = 0x01;
-                    Address.Lo = SP;
-                    _ad.Lo = _data;
+                    pins.Address.Hi = 0x01;
+                    pins.Address.Lo = SP;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x20 << 3) | 2:
-                    Address.Lo = SP--;
-                    _data = PC.Hi;
-                    _rw = false;
+                    pins.Address.Lo = SP--;
+                    pins.Data = PC.Hi;
+                    pins.RW = false;
                     break;
                 case (0x20 << 3) | 3:
-                    Address.Lo = SP--;
-                    _data = PC.Lo;
-                    _rw = false;
+                    pins.Address.Lo = SP--;
+                    pins.Data = PC.Lo;
+                    pins.RW = false;
                     break;
                 case (0x20 << 3) | 4:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x20 << 3) | 5:
-                    PC.Hi = _data;
+                    PC.Hi = pins.Data;
                     PC.Lo = _ad.Lo;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x20 << 3) | 6:
                     Debug.Assert(false);
@@ -1021,27 +1021,27 @@ namespace Aemula.Chips.Mos6502
 
                 // AND (zp,X) - Logical AND
                 case (0x21 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x21 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x21 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x21 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x21 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x21 << 3) | 5:
-                    And();
-                    FetchNextInstruction();
+                    And(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x21 << 3) | 6:
                     Debug.Assert(false);
@@ -1052,14 +1052,14 @@ namespace Aemula.Chips.Mos6502
 
                 // JAM invalid
                 case (0x22 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x22 << 3) | 1:
-                    Address.Hi = 0xFF;
-                    Address.Lo = 0xFF;
-                    _data = 0xFF;
+                    pins.Address.Hi = 0xFF;
+                    pins.Address.Lo = 0xFF;
+                    pins.Data = 0xFF;
                     _ir--;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x22 << 3) | 2:
                     Debug.Assert(false);
@@ -1082,49 +1082,49 @@ namespace Aemula.Chips.Mos6502
 
                 // RLA (zp,X) - ROL + AND (undocumented)
                 case (0x23 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x23 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x23 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x23 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x23 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x23 << 3) | 5:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x23 << 3) | 6:
-                    _data = RolHelper(_ad.Lo);
-                    _rw = false;
-                    And();
+                    pins.Data = RolHelper(_ad.Lo);
+                    pins.RW = false;
+                    And(pins);
                     break;
                 case (0x23 << 3) | 7:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
 
                 // BIT zp - Bit Test
                 case (0x24 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x24 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x24 << 3) | 2:
-                    P.Z = (A & _data) == 0;
-                    P.V = (_data & 0x40) == 0x40;
-                    P.N = (_data & 0x80) == 0x80;
-                    FetchNextInstruction();
+                    P.Z = (A & pins.Data) == 0;
+                    P.V = (pins.Data & 0x40) == 0x40;
+                    P.N = (pins.Data & 0x80) == 0x80;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x24 << 3) | 3:
                     Debug.Assert(false);
@@ -1144,14 +1144,14 @@ namespace Aemula.Chips.Mos6502
 
                 // AND zp - Logical AND
                 case (0x25 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x25 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x25 << 3) | 2:
-                    And();
-                    FetchNextInstruction();
+                    And(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x25 << 3) | 3:
                     Debug.Assert(false);
@@ -1171,21 +1171,21 @@ namespace Aemula.Chips.Mos6502
 
                 // ROL zp - Rotate Left
                 case (0x26 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x26 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x26 << 3) | 2:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x26 << 3) | 3:
-                    _data = RolHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = RolHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x26 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x26 << 3) | 5:
                     Debug.Assert(false);
@@ -1199,22 +1199,22 @@ namespace Aemula.Chips.Mos6502
 
                 // RLA zp - ROL + AND (undocumented)
                 case (0x27 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x27 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x27 << 3) | 2:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x27 << 3) | 3:
-                    _data = RolHelper(_ad.Lo);
-                    _rw = false;
-                    And();
+                    pins.Data = RolHelper(_ad.Lo);
+                    pins.RW = false;
+                    And(pins);
                     break;
                 case (0x27 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x27 << 3) | 5:
                     Debug.Assert(false);
@@ -1228,18 +1228,18 @@ namespace Aemula.Chips.Mos6502
 
                 // PLP 
                 case (0x28 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x28 << 3) | 1:
-                    Address.Hi = 0x01;
-                    Address.Lo = SP++;
+                    pins.Address.Hi = 0x01;
+                    pins.Address.Lo = SP++;
                     break;
                 case (0x28 << 3) | 2:
-                    Address.Lo = SP;
+                    pins.Address.Lo = SP;
                     break;
                 case (0x28 << 3) | 3:
-                    P.SetFromByte(P.SetZeroNegativeFlags(_data));
-                    FetchNextInstruction();
+                    P.SetFromByte(P.SetZeroNegativeFlags(pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x28 << 3) | 4:
                     Debug.Assert(false);
@@ -1256,11 +1256,11 @@ namespace Aemula.Chips.Mos6502
 
                 // AND # - Logical AND
                 case (0x29 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x29 << 3) | 1:
-                    And();
-                    FetchNextInstruction();
+                    And(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x29 << 3) | 2:
                     Debug.Assert(false);
@@ -1283,11 +1283,11 @@ namespace Aemula.Chips.Mos6502
 
                 // ROL  - Rotate Left
                 case (0x2A << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x2A << 3) | 1:
                     A = RolHelper(A);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x2A << 3) | 2:
                     Debug.Assert(false);
@@ -1310,13 +1310,13 @@ namespace Aemula.Chips.Mos6502
 
                 // ANC #
                 case (0x2B << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x2B << 3) | 1:
-                    A &= _data;
+                    A &= pins.Data;
                     P.SetZeroNegativeFlags(A);
                     P.C = (A & 0x80) != 0;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x2B << 3) | 2:
                     Debug.Assert(false);
@@ -1339,21 +1339,21 @@ namespace Aemula.Chips.Mos6502
 
                 // BIT abs - Bit Test
                 case (0x2C << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x2C << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x2C << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x2C << 3) | 3:
-                    P.Z = (A & _data) == 0;
-                    P.V = (_data & 0x40) == 0x40;
-                    P.N = (_data & 0x80) == 0x80;
-                    FetchNextInstruction();
+                    P.Z = (A & pins.Data) == 0;
+                    P.V = (pins.Data & 0x40) == 0x40;
+                    P.N = (pins.Data & 0x80) == 0x80;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x2C << 3) | 4:
                     Debug.Assert(false);
@@ -1370,19 +1370,19 @@ namespace Aemula.Chips.Mos6502
 
                 // AND abs - Logical AND
                 case (0x2D << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x2D << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x2D << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x2D << 3) | 3:
-                    And();
-                    FetchNextInstruction();
+                    And(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x2D << 3) | 4:
                     Debug.Assert(false);
@@ -1399,26 +1399,26 @@ namespace Aemula.Chips.Mos6502
 
                 // ROL abs - Rotate Left
                 case (0x2E << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x2E << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x2E << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x2E << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x2E << 3) | 4:
-                    _data = RolHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = RolHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x2E << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x2E << 3) | 6:
                     Debug.Assert(false);
@@ -1429,27 +1429,27 @@ namespace Aemula.Chips.Mos6502
 
                 // RLA abs - ROL + AND (undocumented)
                 case (0x2F << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x2F << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x2F << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x2F << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x2F << 3) | 4:
-                    _data = RolHelper(_ad.Lo);
-                    _rw = false;
-                    And();
+                    pins.Data = RolHelper(_ad.Lo);
+                    pins.RW = false;
+                    And(pins);
                     break;
                 case (0x2F << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x2F << 3) | 6:
                     Debug.Assert(false);
@@ -1460,27 +1460,27 @@ namespace Aemula.Chips.Mos6502
 
                 // BMI #
                 case (0x30 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x30 << 3) | 1:
-                    Address = PC;
-                    _ad = PC + (sbyte)_data;
+                    pins.Address = PC;
+                    _ad = PC + (sbyte)pins.Data;
                     if (P.N != true)
                     {
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0x30 << 3) | 2:
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     if (_ad.Hi == PC.Hi)
                     {
                         PC = _ad;
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0x30 << 3) | 3:
                     PC = _ad;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x30 << 3) | 4:
                     Debug.Assert(false);
@@ -1497,28 +1497,28 @@ namespace Aemula.Chips.Mos6502
 
                 // AND (zp),Y - Logical AND
                 case (0x31 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x31 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x31 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x31 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0x31 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x31 << 3) | 5:
-                    And();
-                    FetchNextInstruction();
+                    And(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x31 << 3) | 6:
                     Debug.Assert(false);
@@ -1529,14 +1529,14 @@ namespace Aemula.Chips.Mos6502
 
                 // JAM invalid
                 case (0x32 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x32 << 3) | 1:
-                    Address.Hi = 0xFF;
-                    Address.Lo = 0xFF;
-                    _data = 0xFF;
+                    pins.Address.Hi = 0xFF;
+                    pins.Address.Lo = 0xFF;
+                    pins.Data = 0xFF;
                     _ir--;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x32 << 3) | 2:
                     Debug.Assert(false);
@@ -1559,50 +1559,50 @@ namespace Aemula.Chips.Mos6502
 
                 // RLA (zp),Y - ROL + AND (undocumented)
                 case (0x33 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x33 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x33 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x33 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x33 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x33 << 3) | 5:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x33 << 3) | 6:
-                    _data = RolHelper(_ad.Lo);
-                    _rw = false;
-                    And();
+                    pins.Data = RolHelper(_ad.Lo);
+                    pins.RW = false;
+                    And(pins);
                     break;
                 case (0x33 << 3) | 7:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
 
                 // NOP zp,X
                 case (0x34 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x34 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x34 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x34 << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x34 << 3) | 4:
                     Debug.Assert(false);
@@ -1619,18 +1619,18 @@ namespace Aemula.Chips.Mos6502
 
                 // AND zp,X - Logical AND
                 case (0x35 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x35 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x35 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x35 << 3) | 3:
-                    And();
-                    FetchNextInstruction();
+                    And(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x35 << 3) | 4:
                     Debug.Assert(false);
@@ -1647,25 +1647,25 @@ namespace Aemula.Chips.Mos6502
 
                 // ROL zp,X - Rotate Left
                 case (0x36 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x36 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x36 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x36 << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x36 << 3) | 4:
-                    _data = RolHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = RolHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x36 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x36 << 3) | 6:
                     Debug.Assert(false);
@@ -1676,26 +1676,26 @@ namespace Aemula.Chips.Mos6502
 
                 // RLA zp,X - ROL + AND (undocumented)
                 case (0x37 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x37 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x37 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x37 << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x37 << 3) | 4:
-                    _data = RolHelper(_ad.Lo);
-                    _rw = false;
-                    And();
+                    pins.Data = RolHelper(_ad.Lo);
+                    pins.RW = false;
+                    And(pins);
                     break;
                 case (0x37 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x37 << 3) | 6:
                     Debug.Assert(false);
@@ -1706,11 +1706,11 @@ namespace Aemula.Chips.Mos6502
 
                 // SLC 
                 case (0x38 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x38 << 3) | 1:
                     P.C = true;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x38 << 3) | 2:
                     Debug.Assert(false);
@@ -1733,24 +1733,24 @@ namespace Aemula.Chips.Mos6502
 
                 // AND abs,Y - Logical AND
                 case (0x39 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x39 << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x39 << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0x39 << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x39 << 3) | 4:
-                    And();
-                    FetchNextInstruction();
+                    And(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x39 << 3) | 5:
                     Debug.Assert(false);
@@ -1764,10 +1764,10 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP 
                 case (0x3A << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x3A << 3) | 1:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x3A << 3) | 2:
                     Debug.Assert(false);
@@ -1790,31 +1790,31 @@ namespace Aemula.Chips.Mos6502
 
                 // RLA abs,Y - ROL + AND (undocumented)
                 case (0x3B << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x3B << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x3B << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x3B << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x3B << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x3B << 3) | 5:
-                    _data = RolHelper(_ad.Lo);
-                    _rw = false;
-                    And();
+                    pins.Data = RolHelper(_ad.Lo);
+                    pins.RW = false;
+                    And(pins);
                     break;
                 case (0x3B << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x3B << 3) | 7:
                     Debug.Assert(false);
@@ -1822,23 +1822,23 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP abs,X
                 case (0x3C << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x3C << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x3C << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0x3C << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x3C << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x3C << 3) | 5:
                     Debug.Assert(false);
@@ -1852,24 +1852,24 @@ namespace Aemula.Chips.Mos6502
 
                 // AND abs,X - Logical AND
                 case (0x3D << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x3D << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x3D << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0x3D << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x3D << 3) | 4:
-                    And();
-                    FetchNextInstruction();
+                    And(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x3D << 3) | 5:
                     Debug.Assert(false);
@@ -1883,30 +1883,30 @@ namespace Aemula.Chips.Mos6502
 
                 // ROL abs,X - Rotate Left
                 case (0x3E << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x3E << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x3E << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0x3E << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x3E << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x3E << 3) | 5:
-                    _data = RolHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = RolHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x3E << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x3E << 3) | 7:
                     Debug.Assert(false);
@@ -1914,31 +1914,31 @@ namespace Aemula.Chips.Mos6502
 
                 // RLA abs,X - ROL + AND (undocumented)
                 case (0x3F << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x3F << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x3F << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0x3F << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x3F << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x3F << 3) | 5:
-                    _data = RolHelper(_ad.Lo);
-                    _rw = false;
-                    And();
+                    pins.Data = RolHelper(_ad.Lo);
+                    pins.RW = false;
+                    And(pins);
                     break;
                 case (0x3F << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x3F << 3) | 7:
                     Debug.Assert(false);
@@ -1946,27 +1946,27 @@ namespace Aemula.Chips.Mos6502
 
                 // RTI 
                 case (0x40 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x40 << 3) | 1:
-                    Address.Hi = 0x01;
-                    Address.Lo = SP++;
+                    pins.Address.Hi = 0x01;
+                    pins.Address.Lo = SP++;
                     break;
                 case (0x40 << 3) | 2:
-                    Address.Lo = SP++;
+                    pins.Address.Lo = SP++;
                     break;
                 case (0x40 << 3) | 3:
-                    Address.Lo = SP++;
-                    P.SetFromByte(_data);
+                    pins.Address.Lo = SP++;
+                    P.SetFromByte(pins.Data);
                     break;
                 case (0x40 << 3) | 4:
-                    Address.Lo = SP;
-                    _ad.Lo = _data;
+                    pins.Address.Lo = SP;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x40 << 3) | 5:
-                    PC.Hi = _data;
+                    PC.Hi = pins.Data;
                     PC.Lo = _ad.Lo;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x40 << 3) | 6:
                     Debug.Assert(false);
@@ -1977,27 +1977,27 @@ namespace Aemula.Chips.Mos6502
 
                 // EOR (zp,X) - Exclusive OR
                 case (0x41 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x41 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x41 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x41 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x41 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x41 << 3) | 5:
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x41 << 3) | 6:
                     Debug.Assert(false);
@@ -2008,14 +2008,14 @@ namespace Aemula.Chips.Mos6502
 
                 // JAM invalid
                 case (0x42 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x42 << 3) | 1:
-                    Address.Hi = 0xFF;
-                    Address.Lo = 0xFF;
-                    _data = 0xFF;
+                    pins.Address.Hi = 0xFF;
+                    pins.Address.Lo = 0xFF;
+                    pins.Data = 0xFF;
                     _ir--;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x42 << 3) | 2:
                     Debug.Assert(false);
@@ -2038,46 +2038,46 @@ namespace Aemula.Chips.Mos6502
 
                 // SRE (zp,X) - LSR + EOR (undocumented)
                 case (0x43 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x43 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x43 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x43 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x43 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x43 << 3) | 5:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x43 << 3) | 6:
-                    _data = LsrHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
+                    pins.Data = LsrHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
                     break;
                 case (0x43 << 3) | 7:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
 
                 // NOP zp
                 case (0x44 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x44 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x44 << 3) | 2:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x44 << 3) | 3:
                     Debug.Assert(false);
@@ -2097,14 +2097,14 @@ namespace Aemula.Chips.Mos6502
 
                 // EOR zp - Exclusive OR
                 case (0x45 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x45 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x45 << 3) | 2:
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x45 << 3) | 3:
                     Debug.Assert(false);
@@ -2124,21 +2124,21 @@ namespace Aemula.Chips.Mos6502
 
                 // LSR zp - Logical Shift Right
                 case (0x46 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x46 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x46 << 3) | 2:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x46 << 3) | 3:
-                    _data = LsrHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = LsrHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x46 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x46 << 3) | 5:
                     Debug.Assert(false);
@@ -2152,22 +2152,22 @@ namespace Aemula.Chips.Mos6502
 
                 // SRE zp - LSR + EOR (undocumented)
                 case (0x47 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x47 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x47 << 3) | 2:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x47 << 3) | 3:
-                    _data = LsrHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
+                    pins.Data = LsrHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
                     break;
                 case (0x47 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x47 << 3) | 5:
                     Debug.Assert(false);
@@ -2181,16 +2181,16 @@ namespace Aemula.Chips.Mos6502
 
                 // PHA 
                 case (0x48 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x48 << 3) | 1:
-                    Address.Hi = 0x01;
-                    Address.Lo = SP--;
-                    _data = A;
-                    _rw = false;
+                    pins.Address.Hi = 0x01;
+                    pins.Address.Lo = SP--;
+                    pins.Data = A;
+                    pins.RW = false;
                     break;
                 case (0x48 << 3) | 2:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x48 << 3) | 3:
                     Debug.Assert(false);
@@ -2210,11 +2210,11 @@ namespace Aemula.Chips.Mos6502
 
                 // EOR # - Exclusive OR
                 case (0x49 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x49 << 3) | 1:
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x49 << 3) | 2:
                     Debug.Assert(false);
@@ -2237,11 +2237,11 @@ namespace Aemula.Chips.Mos6502
 
                 // LSR  - Logical Shift Right
                 case (0x4A << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x4A << 3) | 1:
                     A = LsrHelper(A);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x4A << 3) | 2:
                     Debug.Assert(false);
@@ -2264,12 +2264,12 @@ namespace Aemula.Chips.Mos6502
 
                 // ASR #
                 case (0x4B << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x4B << 3) | 1:
-                    And();
+                    And(pins);
                     A = LsrHelper(A);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x4B << 3) | 2:
                     Debug.Assert(false);
@@ -2292,17 +2292,17 @@ namespace Aemula.Chips.Mos6502
 
                 // JMP abs
                 case (0x4C << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x4C << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x4C << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
-                    PC = Address;
-                    FetchNextInstruction();
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
+                    PC = pins.Address;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x4C << 3) | 3:
                     Debug.Assert(false);
@@ -2322,19 +2322,19 @@ namespace Aemula.Chips.Mos6502
 
                 // EOR abs - Exclusive OR
                 case (0x4D << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x4D << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x4D << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x4D << 3) | 3:
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x4D << 3) | 4:
                     Debug.Assert(false);
@@ -2351,26 +2351,26 @@ namespace Aemula.Chips.Mos6502
 
                 // LSR abs - Logical Shift Right
                 case (0x4E << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x4E << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x4E << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x4E << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x4E << 3) | 4:
-                    _data = LsrHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = LsrHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x4E << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x4E << 3) | 6:
                     Debug.Assert(false);
@@ -2381,27 +2381,27 @@ namespace Aemula.Chips.Mos6502
 
                 // SRE abs - LSR + EOR (undocumented)
                 case (0x4F << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x4F << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x4F << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x4F << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x4F << 3) | 4:
-                    _data = LsrHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
+                    pins.Data = LsrHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
                     break;
                 case (0x4F << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x4F << 3) | 6:
                     Debug.Assert(false);
@@ -2412,27 +2412,27 @@ namespace Aemula.Chips.Mos6502
 
                 // BVC #
                 case (0x50 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x50 << 3) | 1:
-                    Address = PC;
-                    _ad = PC + (sbyte)_data;
+                    pins.Address = PC;
+                    _ad = PC + (sbyte)pins.Data;
                     if (P.V != false)
                     {
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0x50 << 3) | 2:
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     if (_ad.Hi == PC.Hi)
                     {
                         PC = _ad;
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0x50 << 3) | 3:
                     PC = _ad;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x50 << 3) | 4:
                     Debug.Assert(false);
@@ -2449,28 +2449,28 @@ namespace Aemula.Chips.Mos6502
 
                 // EOR (zp),Y - Exclusive OR
                 case (0x51 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x51 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x51 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x51 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0x51 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x51 << 3) | 5:
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x51 << 3) | 6:
                     Debug.Assert(false);
@@ -2481,14 +2481,14 @@ namespace Aemula.Chips.Mos6502
 
                 // JAM invalid
                 case (0x52 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x52 << 3) | 1:
-                    Address.Hi = 0xFF;
-                    Address.Lo = 0xFF;
-                    _data = 0xFF;
+                    pins.Address.Hi = 0xFF;
+                    pins.Address.Lo = 0xFF;
+                    pins.Data = 0xFF;
                     _ir--;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x52 << 3) | 2:
                     Debug.Assert(false);
@@ -2511,50 +2511,50 @@ namespace Aemula.Chips.Mos6502
 
                 // SRE (zp),Y - LSR + EOR (undocumented)
                 case (0x53 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x53 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x53 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x53 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x53 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x53 << 3) | 5:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x53 << 3) | 6:
-                    _data = LsrHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
+                    pins.Data = LsrHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
                     break;
                 case (0x53 << 3) | 7:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
 
                 // NOP zp,X
                 case (0x54 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x54 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x54 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x54 << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x54 << 3) | 4:
                     Debug.Assert(false);
@@ -2571,18 +2571,18 @@ namespace Aemula.Chips.Mos6502
 
                 // EOR zp,X - Exclusive OR
                 case (0x55 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x55 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x55 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x55 << 3) | 3:
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x55 << 3) | 4:
                     Debug.Assert(false);
@@ -2599,25 +2599,25 @@ namespace Aemula.Chips.Mos6502
 
                 // LSR zp,X - Logical Shift Right
                 case (0x56 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x56 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x56 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x56 << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x56 << 3) | 4:
-                    _data = LsrHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = LsrHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x56 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x56 << 3) | 6:
                     Debug.Assert(false);
@@ -2628,26 +2628,26 @@ namespace Aemula.Chips.Mos6502
 
                 // SRE zp,X - LSR + EOR (undocumented)
                 case (0x57 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x57 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x57 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x57 << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x57 << 3) | 4:
-                    _data = LsrHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
+                    pins.Data = LsrHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
                     break;
                 case (0x57 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x57 << 3) | 6:
                     Debug.Assert(false);
@@ -2658,11 +2658,11 @@ namespace Aemula.Chips.Mos6502
 
                 // CLI 
                 case (0x58 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x58 << 3) | 1:
                     P.I = false;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x58 << 3) | 2:
                     Debug.Assert(false);
@@ -2685,24 +2685,24 @@ namespace Aemula.Chips.Mos6502
 
                 // EOR abs,Y - Exclusive OR
                 case (0x59 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x59 << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x59 << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0x59 << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x59 << 3) | 4:
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x59 << 3) | 5:
                     Debug.Assert(false);
@@ -2716,10 +2716,10 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP 
                 case (0x5A << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x5A << 3) | 1:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x5A << 3) | 2:
                     Debug.Assert(false);
@@ -2742,31 +2742,31 @@ namespace Aemula.Chips.Mos6502
 
                 // SRE abs,Y - LSR + EOR (undocumented)
                 case (0x5B << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x5B << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x5B << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x5B << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x5B << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x5B << 3) | 5:
-                    _data = LsrHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
+                    pins.Data = LsrHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
                     break;
                 case (0x5B << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x5B << 3) | 7:
                     Debug.Assert(false);
@@ -2774,23 +2774,23 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP abs,X
                 case (0x5C << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x5C << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x5C << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0x5C << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x5C << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x5C << 3) | 5:
                     Debug.Assert(false);
@@ -2804,24 +2804,24 @@ namespace Aemula.Chips.Mos6502
 
                 // EOR abs,X - Exclusive OR
                 case (0x5D << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x5D << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x5D << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0x5D << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x5D << 3) | 4:
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x5D << 3) | 5:
                     Debug.Assert(false);
@@ -2835,30 +2835,30 @@ namespace Aemula.Chips.Mos6502
 
                 // LSR abs,X - Logical Shift Right
                 case (0x5E << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x5E << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x5E << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0x5E << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x5E << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x5E << 3) | 5:
-                    _data = LsrHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = LsrHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x5E << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x5E << 3) | 7:
                     Debug.Assert(false);
@@ -2866,31 +2866,31 @@ namespace Aemula.Chips.Mos6502
 
                 // SRE abs,X - LSR + EOR (undocumented)
                 case (0x5F << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x5F << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x5F << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0x5F << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x5F << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x5F << 3) | 5:
-                    _data = LsrHelper(_ad.Lo);
-                    _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
+                    pins.Data = LsrHelper(_ad.Lo);
+                    pins.RW = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ pins.Data));
                     break;
                 case (0x5F << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x5F << 3) | 7:
                     Debug.Assert(false);
@@ -2898,26 +2898,26 @@ namespace Aemula.Chips.Mos6502
 
                 // RTS 
                 case (0x60 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x60 << 3) | 1:
-                    Address.Hi = 0x01;
-                    Address.Lo = SP++;
+                    pins.Address.Hi = 0x01;
+                    pins.Address.Lo = SP++;
                     break;
                 case (0x60 << 3) | 2:
-                    Address.Lo = SP++;
+                    pins.Address.Lo = SP++;
                     break;
                 case (0x60 << 3) | 3:
-                    Address.Lo = SP;
-                    _ad.Lo = _data;
+                    pins.Address.Lo = SP;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x60 << 3) | 4:
-                    PC.Hi = _data;
+                    PC.Hi = pins.Data;
                     PC.Lo = _ad.Lo;
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x60 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x60 << 3) | 6:
                     Debug.Assert(false);
@@ -2928,27 +2928,27 @@ namespace Aemula.Chips.Mos6502
 
                 // ADC (zp,X)
                 case (0x61 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x61 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x61 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x61 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x61 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x61 << 3) | 5:
-                    Adc();
-                    FetchNextInstruction();
+                    Adc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x61 << 3) | 6:
                     Debug.Assert(false);
@@ -2959,14 +2959,14 @@ namespace Aemula.Chips.Mos6502
 
                 // JAM invalid
                 case (0x62 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x62 << 3) | 1:
-                    Address.Hi = 0xFF;
-                    Address.Lo = 0xFF;
-                    _data = 0xFF;
+                    pins.Address.Hi = 0xFF;
+                    pins.Address.Lo = 0xFF;
+                    pins.Data = 0xFF;
                     _ir--;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x62 << 3) | 2:
                     Debug.Assert(false);
@@ -2989,46 +2989,46 @@ namespace Aemula.Chips.Mos6502
 
                 // RRA (zp,X) - ROR + ADC (undocumented)
                 case (0x63 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x63 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x63 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x63 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x63 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x63 << 3) | 5:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x63 << 3) | 6:
-                    _data = RorHelper(_ad.Lo);
-                    _rw = false;
-                    Adc();
+                    pins.Data = RorHelper(_ad.Lo);
+                    pins.RW = false;
+                    Adc(pins);
                     break;
                 case (0x63 << 3) | 7:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
 
                 // NOP zp
                 case (0x64 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x64 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x64 << 3) | 2:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x64 << 3) | 3:
                     Debug.Assert(false);
@@ -3048,14 +3048,14 @@ namespace Aemula.Chips.Mos6502
 
                 // ADC zp
                 case (0x65 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x65 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x65 << 3) | 2:
-                    Adc();
-                    FetchNextInstruction();
+                    Adc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x65 << 3) | 3:
                     Debug.Assert(false);
@@ -3075,21 +3075,21 @@ namespace Aemula.Chips.Mos6502
 
                 // ROR zp
                 case (0x66 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x66 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x66 << 3) | 2:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x66 << 3) | 3:
-                    _data = RorHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = RorHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x66 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x66 << 3) | 5:
                     Debug.Assert(false);
@@ -3103,22 +3103,22 @@ namespace Aemula.Chips.Mos6502
 
                 // RRA zp - ROR + ADC (undocumented)
                 case (0x67 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x67 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0x67 << 3) | 2:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x67 << 3) | 3:
-                    _data = RorHelper(_ad.Lo);
-                    _rw = false;
-                    Adc();
+                    pins.Data = RorHelper(_ad.Lo);
+                    pins.RW = false;
+                    Adc(pins);
                     break;
                 case (0x67 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x67 << 3) | 5:
                     Debug.Assert(false);
@@ -3132,18 +3132,18 @@ namespace Aemula.Chips.Mos6502
 
                 // PLA 
                 case (0x68 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x68 << 3) | 1:
-                    Address.Hi = 0x01;
-                    Address.Lo = SP++;
+                    pins.Address.Hi = 0x01;
+                    pins.Address.Lo = SP++;
                     break;
                 case (0x68 << 3) | 2:
-                    Address.Lo = SP;
+                    pins.Address.Lo = SP;
                     break;
                 case (0x68 << 3) | 3:
-                    A = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x68 << 3) | 4:
                     Debug.Assert(false);
@@ -3160,11 +3160,11 @@ namespace Aemula.Chips.Mos6502
 
                 // ADC #
                 case (0x69 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x69 << 3) | 1:
-                    Adc();
-                    FetchNextInstruction();
+                    Adc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x69 << 3) | 2:
                     Debug.Assert(false);
@@ -3187,11 +3187,11 @@ namespace Aemula.Chips.Mos6502
 
                 // ROR  - Rotate Right
                 case (0x6A << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x6A << 3) | 1:
                     Rora();
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x6A << 3) | 2:
                     Debug.Assert(false);
@@ -3214,11 +3214,11 @@ namespace Aemula.Chips.Mos6502
 
                 // ARR #
                 case (0x6B << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x6B << 3) | 1:
-                    Arr();
-                    FetchNextInstruction();
+                    Arr(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x6B << 3) | 2:
                     Debug.Assert(false);
@@ -3241,25 +3241,25 @@ namespace Aemula.Chips.Mos6502
 
                 // JMP ind
                 case (0x6C << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x6C << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x6C << 3) | 2:
-                    _ad.Hi = _data;
-                    Address = _ad;
+                    _ad.Hi = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x6C << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x6C << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
-                    PC = Address;
-                    FetchNextInstruction();
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
+                    PC = pins.Address;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x6C << 3) | 5:
                     Debug.Assert(false);
@@ -3273,19 +3273,19 @@ namespace Aemula.Chips.Mos6502
 
                 // ADC abs
                 case (0x6D << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x6D << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x6D << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x6D << 3) | 3:
-                    Adc();
-                    FetchNextInstruction();
+                    Adc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x6D << 3) | 4:
                     Debug.Assert(false);
@@ -3302,26 +3302,26 @@ namespace Aemula.Chips.Mos6502
 
                 // ROR abs
                 case (0x6E << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x6E << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x6E << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x6E << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x6E << 3) | 4:
-                    _data = RorHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = RorHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x6E << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x6E << 3) | 6:
                     Debug.Assert(false);
@@ -3332,27 +3332,27 @@ namespace Aemula.Chips.Mos6502
 
                 // RRA abs - ROR + ADC (undocumented)
                 case (0x6F << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x6F << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x6F << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x6F << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x6F << 3) | 4:
-                    _data = RorHelper(_ad.Lo);
-                    _rw = false;
-                    Adc();
+                    pins.Data = RorHelper(_ad.Lo);
+                    pins.RW = false;
+                    Adc(pins);
                     break;
                 case (0x6F << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x6F << 3) | 6:
                     Debug.Assert(false);
@@ -3363,27 +3363,27 @@ namespace Aemula.Chips.Mos6502
 
                 // BVS #
                 case (0x70 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x70 << 3) | 1:
-                    Address = PC;
-                    _ad = PC + (sbyte)_data;
+                    pins.Address = PC;
+                    _ad = PC + (sbyte)pins.Data;
                     if (P.V != true)
                     {
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0x70 << 3) | 2:
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     if (_ad.Hi == PC.Hi)
                     {
                         PC = _ad;
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0x70 << 3) | 3:
                     PC = _ad;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x70 << 3) | 4:
                     Debug.Assert(false);
@@ -3400,28 +3400,28 @@ namespace Aemula.Chips.Mos6502
 
                 // ADC (zp),Y
                 case (0x71 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x71 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x71 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x71 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0x71 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x71 << 3) | 5:
-                    Adc();
-                    FetchNextInstruction();
+                    Adc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x71 << 3) | 6:
                     Debug.Assert(false);
@@ -3432,14 +3432,14 @@ namespace Aemula.Chips.Mos6502
 
                 // JAM invalid
                 case (0x72 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x72 << 3) | 1:
-                    Address.Hi = 0xFF;
-                    Address.Lo = 0xFF;
-                    _data = 0xFF;
+                    pins.Address.Hi = 0xFF;
+                    pins.Address.Lo = 0xFF;
+                    pins.Data = 0xFF;
                     _ir--;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x72 << 3) | 2:
                     Debug.Assert(false);
@@ -3462,50 +3462,50 @@ namespace Aemula.Chips.Mos6502
 
                 // RRA (zp),Y - ROR + ADC (undocumented)
                 case (0x73 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x73 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x73 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x73 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x73 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x73 << 3) | 5:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x73 << 3) | 6:
-                    _data = RorHelper(_ad.Lo);
-                    _rw = false;
-                    Adc();
+                    pins.Data = RorHelper(_ad.Lo);
+                    pins.RW = false;
+                    Adc(pins);
                     break;
                 case (0x73 << 3) | 7:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
 
                 // NOP zp,X
                 case (0x74 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x74 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x74 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x74 << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x74 << 3) | 4:
                     Debug.Assert(false);
@@ -3522,18 +3522,18 @@ namespace Aemula.Chips.Mos6502
 
                 // ADC zp,X
                 case (0x75 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x75 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x75 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x75 << 3) | 3:
-                    Adc();
-                    FetchNextInstruction();
+                    Adc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x75 << 3) | 4:
                     Debug.Assert(false);
@@ -3550,25 +3550,25 @@ namespace Aemula.Chips.Mos6502
 
                 // ROR zp,X
                 case (0x76 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x76 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x76 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x76 << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x76 << 3) | 4:
-                    _data = RorHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = RorHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x76 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x76 << 3) | 6:
                     Debug.Assert(false);
@@ -3579,26 +3579,26 @@ namespace Aemula.Chips.Mos6502
 
                 // RRA zp,X - ROR + ADC (undocumented)
                 case (0x77 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x77 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x77 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x77 << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x77 << 3) | 4:
-                    _data = RorHelper(_ad.Lo);
-                    _rw = false;
-                    Adc();
+                    pins.Data = RorHelper(_ad.Lo);
+                    pins.RW = false;
+                    Adc(pins);
                     break;
                 case (0x77 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x77 << 3) | 6:
                     Debug.Assert(false);
@@ -3609,11 +3609,11 @@ namespace Aemula.Chips.Mos6502
 
                 // SEI 
                 case (0x78 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x78 << 3) | 1:
                     P.I = true;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x78 << 3) | 2:
                     Debug.Assert(false);
@@ -3636,24 +3636,24 @@ namespace Aemula.Chips.Mos6502
 
                 // ADC abs,Y
                 case (0x79 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x79 << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x79 << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0x79 << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x79 << 3) | 4:
-                    Adc();
-                    FetchNextInstruction();
+                    Adc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x79 << 3) | 5:
                     Debug.Assert(false);
@@ -3667,10 +3667,10 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP 
                 case (0x7A << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x7A << 3) | 1:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x7A << 3) | 2:
                     Debug.Assert(false);
@@ -3693,31 +3693,31 @@ namespace Aemula.Chips.Mos6502
 
                 // RRA abs,Y - ROR + ADC (undocumented)
                 case (0x7B << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x7B << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x7B << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x7B << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0x7B << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x7B << 3) | 5:
-                    _data = RorHelper(_ad.Lo);
-                    _rw = false;
-                    Adc();
+                    pins.Data = RorHelper(_ad.Lo);
+                    pins.RW = false;
+                    Adc(pins);
                     break;
                 case (0x7B << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x7B << 3) | 7:
                     Debug.Assert(false);
@@ -3725,23 +3725,23 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP abs,X
                 case (0x7C << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x7C << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x7C << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0x7C << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x7C << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x7C << 3) | 5:
                     Debug.Assert(false);
@@ -3755,24 +3755,24 @@ namespace Aemula.Chips.Mos6502
 
                 // ADC abs,X
                 case (0x7D << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x7D << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x7D << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0x7D << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x7D << 3) | 4:
-                    Adc();
-                    FetchNextInstruction();
+                    Adc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x7D << 3) | 5:
                     Debug.Assert(false);
@@ -3786,30 +3786,30 @@ namespace Aemula.Chips.Mos6502
 
                 // ROR abs,X
                 case (0x7E << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x7E << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x7E << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0x7E << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x7E << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x7E << 3) | 5:
-                    _data = RorHelper(_ad.Lo);
-                    _rw = false;
+                    pins.Data = RorHelper(_ad.Lo);
+                    pins.RW = false;
                     break;
                 case (0x7E << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x7E << 3) | 7:
                     Debug.Assert(false);
@@ -3817,31 +3817,31 @@ namespace Aemula.Chips.Mos6502
 
                 // RRA abs,X - ROR + ADC (undocumented)
                 case (0x7F << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x7F << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x7F << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0x7F << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0x7F << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0x7F << 3) | 5:
-                    _data = RorHelper(_ad.Lo);
-                    _rw = false;
-                    Adc();
+                    pins.Data = RorHelper(_ad.Lo);
+                    pins.RW = false;
+                    Adc(pins);
                     break;
                 case (0x7F << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x7F << 3) | 7:
                     Debug.Assert(false);
@@ -3849,10 +3849,10 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP #
                 case (0x80 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x80 << 3) | 1:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x80 << 3) | 2:
                     Debug.Assert(false);
@@ -3875,28 +3875,28 @@ namespace Aemula.Chips.Mos6502
 
                 // STA (zp,X) - Store Accumulator
                 case (0x81 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x81 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x81 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x81 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x81 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
-                    _data = A;
-                    _rw = false;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
+                    pins.Data = A;
+                    pins.RW = false;
                     break;
                 case (0x81 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x81 << 3) | 6:
                     Debug.Assert(false);
@@ -3907,10 +3907,10 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP #
                 case (0x82 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x82 << 3) | 1:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x82 << 3) | 2:
                     Debug.Assert(false);
@@ -3933,28 +3933,28 @@ namespace Aemula.Chips.Mos6502
 
                 // SAX (zp,X) - Store Accumulator and X (undocumented)
                 case (0x83 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x83 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x83 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0x83 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x83 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
-                    _data = (byte)(A & X);
-                    _rw = false;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
+                    pins.Data = (byte)(A & X);
+                    pins.RW = false;
                     break;
                 case (0x83 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x83 << 3) | 6:
                     Debug.Assert(false);
@@ -3965,15 +3965,15 @@ namespace Aemula.Chips.Mos6502
 
                 // STY zp - Store Y Register
                 case (0x84 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x84 << 3) | 1:
-                    Address = _data;
-                    _data = Y;
-                    _rw = false;
+                    pins.Address = pins.Data;
+                    pins.Data = Y;
+                    pins.RW = false;
                     break;
                 case (0x84 << 3) | 2:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x84 << 3) | 3:
                     Debug.Assert(false);
@@ -3993,15 +3993,15 @@ namespace Aemula.Chips.Mos6502
 
                 // STA zp - Store Accumulator
                 case (0x85 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x85 << 3) | 1:
-                    Address = _data;
-                    _data = A;
-                    _rw = false;
+                    pins.Address = pins.Data;
+                    pins.Data = A;
+                    pins.RW = false;
                     break;
                 case (0x85 << 3) | 2:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x85 << 3) | 3:
                     Debug.Assert(false);
@@ -4021,15 +4021,15 @@ namespace Aemula.Chips.Mos6502
 
                 // STX zp - Store X Register
                 case (0x86 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x86 << 3) | 1:
-                    Address = _data;
-                    _data = X;
-                    _rw = false;
+                    pins.Address = pins.Data;
+                    pins.Data = X;
+                    pins.RW = false;
                     break;
                 case (0x86 << 3) | 2:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x86 << 3) | 3:
                     Debug.Assert(false);
@@ -4049,15 +4049,15 @@ namespace Aemula.Chips.Mos6502
 
                 // SAX zp - Store Accumulator and X (undocumented)
                 case (0x87 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x87 << 3) | 1:
-                    Address = _data;
-                    _data = (byte)(A & X);
-                    _rw = false;
+                    pins.Address = pins.Data;
+                    pins.Data = (byte)(A & X);
+                    pins.RW = false;
                     break;
                 case (0x87 << 3) | 2:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x87 << 3) | 3:
                     Debug.Assert(false);
@@ -4077,11 +4077,11 @@ namespace Aemula.Chips.Mos6502
 
                 // DEY  - Decrement Y Register
                 case (0x88 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x88 << 3) | 1:
                     Y = P.SetZeroNegativeFlags((byte)(Y - 1));
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x88 << 3) | 2:
                     Debug.Assert(false);
@@ -4104,10 +4104,10 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP #
                 case (0x89 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x89 << 3) | 1:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x89 << 3) | 2:
                     Debug.Assert(false);
@@ -4130,11 +4130,11 @@ namespace Aemula.Chips.Mos6502
 
                 // TXA  - Transfer X to Accumulator
                 case (0x8A << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x8A << 3) | 1:
                     A = P.SetZeroNegativeFlags(X);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x8A << 3) | 2:
                     Debug.Assert(false);
@@ -4157,12 +4157,12 @@ namespace Aemula.Chips.Mos6502
 
                 // ANE #
                 case (0x8B << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x8B << 3) | 1:
-                    A = (byte)((A | 0xEE) & X & _data);
+                    A = (byte)((A | 0xEE) & X & pins.Data);
                     P.SetZeroNegativeFlags(A);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x8B << 3) | 2:
                     Debug.Assert(false);
@@ -4185,20 +4185,20 @@ namespace Aemula.Chips.Mos6502
 
                 // STY abs - Store Y Register
                 case (0x8C << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x8C << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x8C << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
-                    _data = Y;
-                    _rw = false;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
+                    pins.Data = Y;
+                    pins.RW = false;
                     break;
                 case (0x8C << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x8C << 3) | 4:
                     Debug.Assert(false);
@@ -4215,20 +4215,20 @@ namespace Aemula.Chips.Mos6502
 
                 // STA abs - Store Accumulator
                 case (0x8D << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x8D << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x8D << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
-                    _data = A;
-                    _rw = false;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
+                    pins.Data = A;
+                    pins.RW = false;
                     break;
                 case (0x8D << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x8D << 3) | 4:
                     Debug.Assert(false);
@@ -4245,20 +4245,20 @@ namespace Aemula.Chips.Mos6502
 
                 // STX abs - Store X Register
                 case (0x8E << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x8E << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x8E << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
-                    _data = X;
-                    _rw = false;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
+                    pins.Data = X;
+                    pins.RW = false;
                     break;
                 case (0x8E << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x8E << 3) | 4:
                     Debug.Assert(false);
@@ -4275,20 +4275,20 @@ namespace Aemula.Chips.Mos6502
 
                 // SAX abs - Store Accumulator and X (undocumented)
                 case (0x8F << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x8F << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x8F << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
-                    _data = (byte)(A & X);
-                    _rw = false;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
+                    pins.Data = (byte)(A & X);
+                    pins.RW = false;
                     break;
                 case (0x8F << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x8F << 3) | 4:
                     Debug.Assert(false);
@@ -4305,27 +4305,27 @@ namespace Aemula.Chips.Mos6502
 
                 // BCC #
                 case (0x90 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x90 << 3) | 1:
-                    Address = PC;
-                    _ad = PC + (sbyte)_data;
+                    pins.Address = PC;
+                    _ad = PC + (sbyte)pins.Data;
                     if (P.C != false)
                     {
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0x90 << 3) | 2:
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     if (_ad.Hi == PC.Hi)
                     {
                         PC = _ad;
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0x90 << 3) | 3:
                     PC = _ad;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x90 << 3) | 4:
                     Debug.Assert(false);
@@ -4342,28 +4342,28 @@ namespace Aemula.Chips.Mos6502
 
                 // STA (zp),Y - Store Accumulator
                 case (0x91 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x91 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x91 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x91 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x91 << 3) | 4:
-                    Address = _ad + Y;
-                    _data = A;
-                    _rw = false;
+                    pins.Address = _ad + Y;
+                    pins.Data = A;
+                    pins.RW = false;
                     break;
                 case (0x91 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x91 << 3) | 6:
                     Debug.Assert(false);
@@ -4374,14 +4374,14 @@ namespace Aemula.Chips.Mos6502
 
                 // JAM invalid
                 case (0x92 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x92 << 3) | 1:
-                    Address.Hi = 0xFF;
-                    Address.Lo = 0xFF;
-                    _data = 0xFF;
+                    pins.Address.Hi = 0xFF;
+                    pins.Address.Lo = 0xFF;
+                    pins.Data = 0xFF;
                     _ir--;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x92 << 3) | 2:
                     Debug.Assert(false);
@@ -4404,28 +4404,28 @@ namespace Aemula.Chips.Mos6502
 
                 // SHA (zp),Y
                 case (0x93 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x93 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x93 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x93 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x93 << 3) | 4:
-                    Address = _ad + Y;
-                    _data = (byte)(A & X & (Address.Hi + 1));
-                    _rw = false;
+                    pins.Address = _ad + Y;
+                    pins.Data = (byte)(A & X & (pins.Address.Hi + 1));
+                    pins.RW = false;
                     break;
                 case (0x93 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x93 << 3) | 6:
                     Debug.Assert(false);
@@ -4436,19 +4436,19 @@ namespace Aemula.Chips.Mos6502
 
                 // STY zp,X - Store Y Register
                 case (0x94 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x94 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x94 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
-                    _data = Y;
-                    _rw = false;
+                    pins.Address = (byte)(_ad.Lo + X);
+                    pins.Data = Y;
+                    pins.RW = false;
                     break;
                 case (0x94 << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x94 << 3) | 4:
                     Debug.Assert(false);
@@ -4465,19 +4465,19 @@ namespace Aemula.Chips.Mos6502
 
                 // STA zp,X - Store Accumulator
                 case (0x95 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x95 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x95 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
-                    _data = A;
-                    _rw = false;
+                    pins.Address = (byte)(_ad.Lo + X);
+                    pins.Data = A;
+                    pins.RW = false;
                     break;
                 case (0x95 << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x95 << 3) | 4:
                     Debug.Assert(false);
@@ -4494,19 +4494,19 @@ namespace Aemula.Chips.Mos6502
 
                 // STX zp,Y - Store X Register
                 case (0x96 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x96 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x96 << 3) | 2:
-                    Address = (byte)(_ad.Lo + Y);
-                    _data = X;
-                    _rw = false;
+                    pins.Address = (byte)(_ad.Lo + Y);
+                    pins.Data = X;
+                    pins.RW = false;
                     break;
                 case (0x96 << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x96 << 3) | 4:
                     Debug.Assert(false);
@@ -4523,19 +4523,19 @@ namespace Aemula.Chips.Mos6502
 
                 // SAX zp,Y - Store Accumulator and X (undocumented)
                 case (0x97 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x97 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0x97 << 3) | 2:
-                    Address = (byte)(_ad.Lo + Y);
-                    _data = (byte)(A & X);
-                    _rw = false;
+                    pins.Address = (byte)(_ad.Lo + Y);
+                    pins.Data = (byte)(A & X);
+                    pins.RW = false;
                     break;
                 case (0x97 << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x97 << 3) | 4:
                     Debug.Assert(false);
@@ -4552,11 +4552,11 @@ namespace Aemula.Chips.Mos6502
 
                 // TYA  - Transfer Y to Accumulator
                 case (0x98 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x98 << 3) | 1:
                     A = P.SetZeroNegativeFlags(Y);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x98 << 3) | 2:
                     Debug.Assert(false);
@@ -4579,24 +4579,24 @@ namespace Aemula.Chips.Mos6502
 
                 // STA abs,Y - Store Accumulator
                 case (0x99 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x99 << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x99 << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x99 << 3) | 3:
-                    Address = _ad + Y;
-                    _data = A;
-                    _rw = false;
+                    pins.Address = _ad + Y;
+                    pins.Data = A;
+                    pins.RW = false;
                     break;
                 case (0x99 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x99 << 3) | 5:
                     Debug.Assert(false);
@@ -4610,11 +4610,11 @@ namespace Aemula.Chips.Mos6502
 
                 // TXS  - Transfer X to Stack Pointer
                 case (0x9A << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0x9A << 3) | 1:
                     SP = X;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x9A << 3) | 2:
                     Debug.Assert(false);
@@ -4637,25 +4637,25 @@ namespace Aemula.Chips.Mos6502
 
                 // SHS abs,Y
                 case (0x9B << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x9B << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x9B << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x9B << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     SP = (byte)(A & X);
-                    _data = (byte)(A & X & (Address.Hi + 1));
-                    _rw = false;
+                    pins.Data = (byte)(A & X & (pins.Address.Hi + 1));
+                    pins.RW = false;
                     break;
                 case (0x9B << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x9B << 3) | 5:
                     Debug.Assert(false);
@@ -4669,24 +4669,24 @@ namespace Aemula.Chips.Mos6502
 
                 // SHY abs,X
                 case (0x9C << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x9C << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x9C << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0x9C << 3) | 3:
-                    Address = _ad + X;
-                    _data = (byte)(Y & (Address.Hi + 1));
-                    _rw = false;
+                    pins.Address = _ad + X;
+                    pins.Data = (byte)(Y & (pins.Address.Hi + 1));
+                    pins.RW = false;
                     break;
                 case (0x9C << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x9C << 3) | 5:
                     Debug.Assert(false);
@@ -4700,24 +4700,24 @@ namespace Aemula.Chips.Mos6502
 
                 // STA abs,X - Store Accumulator
                 case (0x9D << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x9D << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x9D << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0x9D << 3) | 3:
-                    Address = _ad + X;
-                    _data = A;
-                    _rw = false;
+                    pins.Address = _ad + X;
+                    pins.Data = A;
+                    pins.RW = false;
                     break;
                 case (0x9D << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x9D << 3) | 5:
                     Debug.Assert(false);
@@ -4731,24 +4731,24 @@ namespace Aemula.Chips.Mos6502
 
                 // SHX abs,Y
                 case (0x9E << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x9E << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x9E << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x9E << 3) | 3:
-                    Address = _ad + Y;
-                    _data = (byte)(X & (Address.Hi + 1));
-                    _rw = false;
+                    pins.Address = _ad + Y;
+                    pins.Data = (byte)(X & (pins.Address.Hi + 1));
+                    pins.RW = false;
                     break;
                 case (0x9E << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x9E << 3) | 5:
                     Debug.Assert(false);
@@ -4762,24 +4762,24 @@ namespace Aemula.Chips.Mos6502
 
                 // SHA abs,Y
                 case (0x9F << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0x9F << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0x9F << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0x9F << 3) | 3:
-                    Address = _ad + Y;
-                    _data = (byte)(A & X & (Address.Hi + 1));
-                    _rw = false;
+                    pins.Address = _ad + Y;
+                    pins.Data = (byte)(A & X & (pins.Address.Hi + 1));
+                    pins.RW = false;
                     break;
                 case (0x9F << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0x9F << 3) | 5:
                     Debug.Assert(false);
@@ -4793,11 +4793,11 @@ namespace Aemula.Chips.Mos6502
 
                 // LDY # - Load Y Register
                 case (0xA0 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xA0 << 3) | 1:
-                    Y = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    Y = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xA0 << 3) | 2:
                     Debug.Assert(false);
@@ -4820,27 +4820,27 @@ namespace Aemula.Chips.Mos6502
 
                 // LDA (zp,X) - Load Accumulator
                 case (0xA1 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xA1 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xA1 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xA1 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xA1 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xA1 << 3) | 5:
-                    A = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xA1 << 3) | 6:
                     Debug.Assert(false);
@@ -4851,11 +4851,11 @@ namespace Aemula.Chips.Mos6502
 
                 // LDX # - Load X Register
                 case (0xA2 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xA2 << 3) | 1:
-                    X = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    X = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xA2 << 3) | 2:
                     Debug.Assert(false);
@@ -4878,28 +4878,28 @@ namespace Aemula.Chips.Mos6502
 
                 // LAX (zp,X) - Load A and X Registers (undocumented)
                 case (0xA3 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xA3 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xA3 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xA3 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xA3 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xA3 << 3) | 5:
-                    A = P.SetZeroNegativeFlags(_data);
-                    X = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    X = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xA3 << 3) | 6:
                     Debug.Assert(false);
@@ -4910,14 +4910,14 @@ namespace Aemula.Chips.Mos6502
 
                 // LDY zp - Load Y Register
                 case (0xA4 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xA4 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0xA4 << 3) | 2:
-                    Y = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    Y = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xA4 << 3) | 3:
                     Debug.Assert(false);
@@ -4937,14 +4937,14 @@ namespace Aemula.Chips.Mos6502
 
                 // LDA zp - Load Accumulator
                 case (0xA5 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xA5 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0xA5 << 3) | 2:
-                    A = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xA5 << 3) | 3:
                     Debug.Assert(false);
@@ -4964,14 +4964,14 @@ namespace Aemula.Chips.Mos6502
 
                 // LDX zp - Load X Register
                 case (0xA6 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xA6 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0xA6 << 3) | 2:
-                    X = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    X = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xA6 << 3) | 3:
                     Debug.Assert(false);
@@ -4991,15 +4991,15 @@ namespace Aemula.Chips.Mos6502
 
                 // LAX zp - Load A and X Registers (undocumented)
                 case (0xA7 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xA7 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0xA7 << 3) | 2:
-                    A = P.SetZeroNegativeFlags(_data);
-                    X = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    X = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xA7 << 3) | 3:
                     Debug.Assert(false);
@@ -5019,11 +5019,11 @@ namespace Aemula.Chips.Mos6502
 
                 // TAY  - Transfer Accumulator to Y
                 case (0xA8 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xA8 << 3) | 1:
                     Y = P.SetZeroNegativeFlags(A);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xA8 << 3) | 2:
                     Debug.Assert(false);
@@ -5046,11 +5046,11 @@ namespace Aemula.Chips.Mos6502
 
                 // LDA # - Load Accumulator
                 case (0xA9 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xA9 << 3) | 1:
-                    A = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xA9 << 3) | 2:
                     Debug.Assert(false);
@@ -5073,11 +5073,11 @@ namespace Aemula.Chips.Mos6502
 
                 // TAX  - Transfer Accumulator to X
                 case (0xAA << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xAA << 3) | 1:
                     X = P.SetZeroNegativeFlags(A);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xAA << 3) | 2:
                     Debug.Assert(false);
@@ -5100,13 +5100,13 @@ namespace Aemula.Chips.Mos6502
 
                 // LXA #
                 case (0xAB << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xAB << 3) | 1:
-                    A = (byte)((A | 0xEE) & _data);
+                    A = (byte)((A | 0xEE) & pins.Data);
                     X = A;
                     P.SetZeroNegativeFlags(A);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xAB << 3) | 2:
                     Debug.Assert(false);
@@ -5129,19 +5129,19 @@ namespace Aemula.Chips.Mos6502
 
                 // LDY abs - Load Y Register
                 case (0xAC << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xAC << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xAC << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xAC << 3) | 3:
-                    Y = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    Y = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xAC << 3) | 4:
                     Debug.Assert(false);
@@ -5158,19 +5158,19 @@ namespace Aemula.Chips.Mos6502
 
                 // LDA abs - Load Accumulator
                 case (0xAD << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xAD << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xAD << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xAD << 3) | 3:
-                    A = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xAD << 3) | 4:
                     Debug.Assert(false);
@@ -5187,19 +5187,19 @@ namespace Aemula.Chips.Mos6502
 
                 // LDX abs - Load X Register
                 case (0xAE << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xAE << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xAE << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xAE << 3) | 3:
-                    X = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    X = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xAE << 3) | 4:
                     Debug.Assert(false);
@@ -5216,20 +5216,20 @@ namespace Aemula.Chips.Mos6502
 
                 // LAX abs - Load A and X Registers (undocumented)
                 case (0xAF << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xAF << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xAF << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xAF << 3) | 3:
-                    A = P.SetZeroNegativeFlags(_data);
-                    X = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    X = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xAF << 3) | 4:
                     Debug.Assert(false);
@@ -5246,27 +5246,27 @@ namespace Aemula.Chips.Mos6502
 
                 // BCS #
                 case (0xB0 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xB0 << 3) | 1:
-                    Address = PC;
-                    _ad = PC + (sbyte)_data;
+                    pins.Address = PC;
+                    _ad = PC + (sbyte)pins.Data;
                     if (P.C != true)
                     {
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0xB0 << 3) | 2:
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     if (_ad.Hi == PC.Hi)
                     {
                         PC = _ad;
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0xB0 << 3) | 3:
                     PC = _ad;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xB0 << 3) | 4:
                     Debug.Assert(false);
@@ -5283,28 +5283,28 @@ namespace Aemula.Chips.Mos6502
 
                 // LDA (zp),Y - Load Accumulator
                 case (0xB1 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xB1 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xB1 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xB1 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0xB1 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xB1 << 3) | 5:
-                    A = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xB1 << 3) | 6:
                     Debug.Assert(false);
@@ -5315,14 +5315,14 @@ namespace Aemula.Chips.Mos6502
 
                 // JAM invalid
                 case (0xB2 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xB2 << 3) | 1:
-                    Address.Hi = 0xFF;
-                    Address.Lo = 0xFF;
-                    _data = 0xFF;
+                    pins.Address.Hi = 0xFF;
+                    pins.Address.Lo = 0xFF;
+                    pins.Data = 0xFF;
                     _ir--;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xB2 << 3) | 2:
                     Debug.Assert(false);
@@ -5345,29 +5345,29 @@ namespace Aemula.Chips.Mos6502
 
                 // LAX (zp),Y - Load A and X Registers (undocumented)
                 case (0xB3 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xB3 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xB3 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xB3 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0xB3 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xB3 << 3) | 5:
-                    A = P.SetZeroNegativeFlags(_data);
-                    X = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    X = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xB3 << 3) | 6:
                     Debug.Assert(false);
@@ -5378,18 +5378,18 @@ namespace Aemula.Chips.Mos6502
 
                 // LDY zp,X - Load Y Register
                 case (0xB4 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xB4 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xB4 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0xB4 << 3) | 3:
-                    Y = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    Y = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xB4 << 3) | 4:
                     Debug.Assert(false);
@@ -5406,18 +5406,18 @@ namespace Aemula.Chips.Mos6502
 
                 // LDA zp,X - Load Accumulator
                 case (0xB5 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xB5 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xB5 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0xB5 << 3) | 3:
-                    A = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xB5 << 3) | 4:
                     Debug.Assert(false);
@@ -5434,18 +5434,18 @@ namespace Aemula.Chips.Mos6502
 
                 // LDX zp,Y - Load X Register
                 case (0xB6 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xB6 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xB6 << 3) | 2:
-                    Address = (byte)(_ad.Lo + Y);
+                    pins.Address = (byte)(_ad.Lo + Y);
                     break;
                 case (0xB6 << 3) | 3:
-                    X = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    X = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xB6 << 3) | 4:
                     Debug.Assert(false);
@@ -5462,19 +5462,19 @@ namespace Aemula.Chips.Mos6502
 
                 // LAX zp,Y - Load A and X Registers (undocumented)
                 case (0xB7 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xB7 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xB7 << 3) | 2:
-                    Address = (byte)(_ad.Lo + Y);
+                    pins.Address = (byte)(_ad.Lo + Y);
                     break;
                 case (0xB7 << 3) | 3:
-                    A = P.SetZeroNegativeFlags(_data);
-                    X = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    X = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xB7 << 3) | 4:
                     Debug.Assert(false);
@@ -5491,11 +5491,11 @@ namespace Aemula.Chips.Mos6502
 
                 // CLV 
                 case (0xB8 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xB8 << 3) | 1:
                     P.V = false;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xB8 << 3) | 2:
                     Debug.Assert(false);
@@ -5518,24 +5518,24 @@ namespace Aemula.Chips.Mos6502
 
                 // LDA abs,Y - Load Accumulator
                 case (0xB9 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xB9 << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xB9 << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0xB9 << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xB9 << 3) | 4:
-                    A = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xB9 << 3) | 5:
                     Debug.Assert(false);
@@ -5549,11 +5549,11 @@ namespace Aemula.Chips.Mos6502
 
                 // TSX  - Transfer Stack Pointer to X
                 case (0xBA << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xBA << 3) | 1:
                     X = P.SetZeroNegativeFlags(SP);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xBA << 3) | 2:
                     Debug.Assert(false);
@@ -5576,27 +5576,27 @@ namespace Aemula.Chips.Mos6502
 
                 // LAS abs,Y
                 case (0xBB << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xBB << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xBB << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0xBB << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xBB << 3) | 4:
-                    A = (byte)(_data & SP);
+                    A = (byte)(pins.Data & SP);
                     X = A;
                     SP = A;
                     P.SetZeroNegativeFlags(A);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xBB << 3) | 5:
                     Debug.Assert(false);
@@ -5610,24 +5610,24 @@ namespace Aemula.Chips.Mos6502
 
                 // LDY abs,X - Load Y Register
                 case (0xBC << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xBC << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xBC << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0xBC << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0xBC << 3) | 4:
-                    Y = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    Y = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xBC << 3) | 5:
                     Debug.Assert(false);
@@ -5641,24 +5641,24 @@ namespace Aemula.Chips.Mos6502
 
                 // LDA abs,X - Load Accumulator
                 case (0xBD << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xBD << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xBD << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0xBD << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0xBD << 3) | 4:
-                    A = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xBD << 3) | 5:
                     Debug.Assert(false);
@@ -5672,24 +5672,24 @@ namespace Aemula.Chips.Mos6502
 
                 // LDX abs,Y - Load X Register
                 case (0xBE << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xBE << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xBE << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0xBE << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xBE << 3) | 4:
-                    X = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    X = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xBE << 3) | 5:
                     Debug.Assert(false);
@@ -5703,25 +5703,25 @@ namespace Aemula.Chips.Mos6502
 
                 // LAX abs,Y - Load A and X Registers (undocumented)
                 case (0xBF << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xBF << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xBF << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0xBF << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xBF << 3) | 4:
-                    A = P.SetZeroNegativeFlags(_data);
-                    X = P.SetZeroNegativeFlags(_data);
-                    FetchNextInstruction();
+                    A = P.SetZeroNegativeFlags(pins.Data);
+                    X = P.SetZeroNegativeFlags(pins.Data);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xBF << 3) | 5:
                     Debug.Assert(false);
@@ -5735,12 +5735,12 @@ namespace Aemula.Chips.Mos6502
 
                 // CPY # - Compare Y Register
                 case (0xC0 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xC0 << 3) | 1:
-                    P.SetZeroNegativeFlags((byte)(Y - _data));
-                    P.C = Y >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(Y - pins.Data));
+                    P.C = Y >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xC0 << 3) | 2:
                     Debug.Assert(false);
@@ -5763,28 +5763,28 @@ namespace Aemula.Chips.Mos6502
 
                 // CMP (zp,X) - Compare
                 case (0xC1 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xC1 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xC1 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xC1 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xC1 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xC1 << 3) | 5:
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xC1 << 3) | 6:
                     Debug.Assert(false);
@@ -5795,10 +5795,10 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP #
                 case (0xC2 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xC2 << 3) | 1:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xC2 << 3) | 2:
                     Debug.Assert(false);
@@ -5821,49 +5821,49 @@ namespace Aemula.Chips.Mos6502
 
                 // DCP (zp,X) - Decrement Memory then Compare (undocumented)
                 case (0xC3 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xC3 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xC3 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xC3 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xC3 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xC3 << 3) | 5:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xC3 << 3) | 6:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
-                    _rw = false;
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
+                    pins.RW = false;
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
                     break;
                 case (0xC3 << 3) | 7:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
 
                 // CPY zp - Compare Y Register
                 case (0xC4 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xC4 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0xC4 << 3) | 2:
-                    P.SetZeroNegativeFlags((byte)(Y - _data));
-                    P.C = Y >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(Y - pins.Data));
+                    P.C = Y >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xC4 << 3) | 3:
                     Debug.Assert(false);
@@ -5883,15 +5883,15 @@ namespace Aemula.Chips.Mos6502
 
                 // CMP zp - Compare
                 case (0xC5 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xC5 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0xC5 << 3) | 2:
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xC5 << 3) | 3:
                     Debug.Assert(false);
@@ -5911,21 +5911,21 @@ namespace Aemula.Chips.Mos6502
 
                 // DEC zp - Decrement Memory
                 case (0xC6 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xC6 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0xC6 << 3) | 2:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xC6 << 3) | 3:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
-                    _rw = false;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
+                    pins.RW = false;
                     break;
                 case (0xC6 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xC6 << 3) | 5:
                     Debug.Assert(false);
@@ -5939,23 +5939,23 @@ namespace Aemula.Chips.Mos6502
 
                 // DCP zp - Decrement Memory then Compare (undocumented)
                 case (0xC7 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xC7 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0xC7 << 3) | 2:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xC7 << 3) | 3:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
-                    _rw = false;
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
+                    pins.RW = false;
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
                     break;
                 case (0xC7 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xC7 << 3) | 5:
                     Debug.Assert(false);
@@ -5969,11 +5969,11 @@ namespace Aemula.Chips.Mos6502
 
                 // INY  - Increment Y Register
                 case (0xC8 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xC8 << 3) | 1:
                     Y = P.SetZeroNegativeFlags((byte)(Y + 1));
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xC8 << 3) | 2:
                     Debug.Assert(false);
@@ -5996,12 +5996,12 @@ namespace Aemula.Chips.Mos6502
 
                 // CMP # - Compare
                 case (0xC9 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xC9 << 3) | 1:
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xC9 << 3) | 2:
                     Debug.Assert(false);
@@ -6024,11 +6024,11 @@ namespace Aemula.Chips.Mos6502
 
                 // DEX  - Decrement X Register
                 case (0xCA << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xCA << 3) | 1:
                     X = P.SetZeroNegativeFlags((byte)(X - 1));
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xCA << 3) | 2:
                     Debug.Assert(false);
@@ -6051,14 +6051,14 @@ namespace Aemula.Chips.Mos6502
 
                 // SBX #
                 case (0xCB << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xCB << 3) | 1:
-                    tempInt32 = (A & X) - _data;
+                    tempInt32 = (A & X) - pins.Data;
                     X = (byte)tempInt32;
                     P.C = tempInt32 >= 0;
                     P.SetZeroNegativeFlags(X);
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xCB << 3) | 2:
                     Debug.Assert(false);
@@ -6081,20 +6081,20 @@ namespace Aemula.Chips.Mos6502
 
                 // CPY abs - Compare Y Register
                 case (0xCC << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xCC << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xCC << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xCC << 3) | 3:
-                    P.SetZeroNegativeFlags((byte)(Y - _data));
-                    P.C = Y >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(Y - pins.Data));
+                    P.C = Y >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xCC << 3) | 4:
                     Debug.Assert(false);
@@ -6111,20 +6111,20 @@ namespace Aemula.Chips.Mos6502
 
                 // CMP abs - Compare
                 case (0xCD << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xCD << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xCD << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xCD << 3) | 3:
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xCD << 3) | 4:
                     Debug.Assert(false);
@@ -6141,26 +6141,26 @@ namespace Aemula.Chips.Mos6502
 
                 // DEC abs - Decrement Memory
                 case (0xCE << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xCE << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xCE << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xCE << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xCE << 3) | 4:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
-                    _rw = false;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
+                    pins.RW = false;
                     break;
                 case (0xCE << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xCE << 3) | 6:
                     Debug.Assert(false);
@@ -6171,28 +6171,28 @@ namespace Aemula.Chips.Mos6502
 
                 // DCP abs - Decrement Memory then Compare (undocumented)
                 case (0xCF << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xCF << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xCF << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xCF << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xCF << 3) | 4:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
-                    _rw = false;
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
+                    pins.RW = false;
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
                     break;
                 case (0xCF << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xCF << 3) | 6:
                     Debug.Assert(false);
@@ -6203,27 +6203,27 @@ namespace Aemula.Chips.Mos6502
 
                 // BNE #
                 case (0xD0 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xD0 << 3) | 1:
-                    Address = PC;
-                    _ad = PC + (sbyte)_data;
+                    pins.Address = PC;
+                    _ad = PC + (sbyte)pins.Data;
                     if (P.Z != false)
                     {
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0xD0 << 3) | 2:
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     if (_ad.Hi == PC.Hi)
                     {
                         PC = _ad;
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0xD0 << 3) | 3:
                     PC = _ad;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xD0 << 3) | 4:
                     Debug.Assert(false);
@@ -6240,29 +6240,29 @@ namespace Aemula.Chips.Mos6502
 
                 // CMP (zp),Y - Compare
                 case (0xD1 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xD1 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xD1 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xD1 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0xD1 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xD1 << 3) | 5:
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xD1 << 3) | 6:
                     Debug.Assert(false);
@@ -6273,14 +6273,14 @@ namespace Aemula.Chips.Mos6502
 
                 // JAM invalid
                 case (0xD2 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xD2 << 3) | 1:
-                    Address.Hi = 0xFF;
-                    Address.Lo = 0xFF;
-                    _data = 0xFF;
+                    pins.Address.Hi = 0xFF;
+                    pins.Address.Lo = 0xFF;
+                    pins.Data = 0xFF;
                     _ir--;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xD2 << 3) | 2:
                     Debug.Assert(false);
@@ -6303,51 +6303,51 @@ namespace Aemula.Chips.Mos6502
 
                 // DCP (zp),Y - Decrement Memory then Compare (undocumented)
                 case (0xD3 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xD3 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xD3 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xD3 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0xD3 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xD3 << 3) | 5:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xD3 << 3) | 6:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
-                    _rw = false;
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
+                    pins.RW = false;
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
                     break;
                 case (0xD3 << 3) | 7:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
 
                 // NOP zp,X
                 case (0xD4 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xD4 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xD4 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0xD4 << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xD4 << 3) | 4:
                     Debug.Assert(false);
@@ -6364,19 +6364,19 @@ namespace Aemula.Chips.Mos6502
 
                 // CMP zp,X - Compare
                 case (0xD5 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xD5 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xD5 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0xD5 << 3) | 3:
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xD5 << 3) | 4:
                     Debug.Assert(false);
@@ -6393,25 +6393,25 @@ namespace Aemula.Chips.Mos6502
 
                 // DEC zp,X - Decrement Memory
                 case (0xD6 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xD6 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xD6 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0xD6 << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xD6 << 3) | 4:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
-                    _rw = false;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
+                    pins.RW = false;
                     break;
                 case (0xD6 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xD6 << 3) | 6:
                     Debug.Assert(false);
@@ -6422,27 +6422,27 @@ namespace Aemula.Chips.Mos6502
 
                 // DCP zp,X - Decrement Memory then Compare (undocumented)
                 case (0xD7 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xD7 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xD7 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0xD7 << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xD7 << 3) | 4:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
-                    _rw = false;
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
+                    pins.RW = false;
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
                     break;
                 case (0xD7 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xD7 << 3) | 6:
                     Debug.Assert(false);
@@ -6453,11 +6453,11 @@ namespace Aemula.Chips.Mos6502
 
                 // CLD 
                 case (0xD8 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xD8 << 3) | 1:
                     P.D = false;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xD8 << 3) | 2:
                     Debug.Assert(false);
@@ -6480,25 +6480,25 @@ namespace Aemula.Chips.Mos6502
 
                 // CMP abs,Y - Compare
                 case (0xD9 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xD9 << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xD9 << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0xD9 << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xD9 << 3) | 4:
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xD9 << 3) | 5:
                     Debug.Assert(false);
@@ -6512,10 +6512,10 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP 
                 case (0xDA << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xDA << 3) | 1:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xDA << 3) | 2:
                     Debug.Assert(false);
@@ -6538,32 +6538,32 @@ namespace Aemula.Chips.Mos6502
 
                 // DCP abs,Y - Decrement Memory then Compare (undocumented)
                 case (0xDB << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xDB << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xDB << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0xDB << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xDB << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xDB << 3) | 5:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
-                    _rw = false;
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
+                    pins.RW = false;
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
                     break;
                 case (0xDB << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xDB << 3) | 7:
                     Debug.Assert(false);
@@ -6571,23 +6571,23 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP abs,X
                 case (0xDC << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xDC << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xDC << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0xDC << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0xDC << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xDC << 3) | 5:
                     Debug.Assert(false);
@@ -6601,25 +6601,25 @@ namespace Aemula.Chips.Mos6502
 
                 // CMP abs,X - Compare
                 case (0xDD << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xDD << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xDD << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0xDD << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0xDD << 3) | 4:
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xDD << 3) | 5:
                     Debug.Assert(false);
@@ -6633,30 +6633,30 @@ namespace Aemula.Chips.Mos6502
 
                 // DEC abs,X - Decrement Memory
                 case (0xDE << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xDE << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xDE << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0xDE << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0xDE << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xDE << 3) | 5:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
-                    _rw = false;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
+                    pins.RW = false;
                     break;
                 case (0xDE << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xDE << 3) | 7:
                     Debug.Assert(false);
@@ -6664,32 +6664,32 @@ namespace Aemula.Chips.Mos6502
 
                 // DCP abs,X - Decrement Memory then Compare (undocumented)
                 case (0xDF << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xDF << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xDF << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0xDF << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0xDF << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xDF << 3) | 5:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
-                    _rw = false;
-                    P.SetZeroNegativeFlags((byte)(A - _data));
-                    P.C = A >= _data;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));
+                    pins.RW = false;
+                    P.SetZeroNegativeFlags((byte)(A - pins.Data));
+                    P.C = A >= pins.Data;
                     break;
                 case (0xDF << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xDF << 3) | 7:
                     Debug.Assert(false);
@@ -6697,12 +6697,12 @@ namespace Aemula.Chips.Mos6502
 
                 // CPX # - Compare X Register
                 case (0xE0 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xE0 << 3) | 1:
-                    P.SetZeroNegativeFlags((byte)(X - _data));
-                    P.C = X >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(X - pins.Data));
+                    P.C = X >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xE0 << 3) | 2:
                     Debug.Assert(false);
@@ -6725,27 +6725,27 @@ namespace Aemula.Chips.Mos6502
 
                 // SBC (zp,X)
                 case (0xE1 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xE1 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xE1 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xE1 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xE1 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xE1 << 3) | 5:
-                    Sbc();
-                    FetchNextInstruction();
+                    Sbc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xE1 << 3) | 6:
                     Debug.Assert(false);
@@ -6756,10 +6756,10 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP #
                 case (0xE2 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xE2 << 3) | 1:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xE2 << 3) | 2:
                     Debug.Assert(false);
@@ -6782,48 +6782,48 @@ namespace Aemula.Chips.Mos6502
 
                 // ISB (zp,X) - Increment Memory then Subtract (undocumented, also known as ISC)
                 case (0xE3 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xE3 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xE3 << 3) | 2:
                     _ad.Lo += X;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xE3 << 3) | 3:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xE3 << 3) | 4:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xE3 << 3) | 5:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xE3 << 3) | 6:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
-                    _rw = false;
-                    Sbc();
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
+                    pins.RW = false;
+                    Sbc(pins);
                     break;
                 case (0xE3 << 3) | 7:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
 
                 // CPX zp - Compare X Register
                 case (0xE4 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xE4 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0xE4 << 3) | 2:
-                    P.SetZeroNegativeFlags((byte)(X - _data));
-                    P.C = X >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(X - pins.Data));
+                    P.C = X >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xE4 << 3) | 3:
                     Debug.Assert(false);
@@ -6843,14 +6843,14 @@ namespace Aemula.Chips.Mos6502
 
                 // SBC zp
                 case (0xE5 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xE5 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0xE5 << 3) | 2:
-                    Sbc();
-                    FetchNextInstruction();
+                    Sbc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xE5 << 3) | 3:
                     Debug.Assert(false);
@@ -6870,21 +6870,21 @@ namespace Aemula.Chips.Mos6502
 
                 // INC zp - Increment Memory
                 case (0xE6 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xE6 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0xE6 << 3) | 2:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xE6 << 3) | 3:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
-                    _rw = false;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
+                    pins.RW = false;
                     break;
                 case (0xE6 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xE6 << 3) | 5:
                     Debug.Assert(false);
@@ -6898,22 +6898,22 @@ namespace Aemula.Chips.Mos6502
 
                 // ISB zp - Increment Memory then Subtract (undocumented, also known as ISC)
                 case (0xE7 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xE7 << 3) | 1:
-                    Address = _data;
+                    pins.Address = pins.Data;
                     break;
                 case (0xE7 << 3) | 2:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xE7 << 3) | 3:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
-                    _rw = false;
-                    Sbc();
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
+                    pins.RW = false;
+                    Sbc(pins);
                     break;
                 case (0xE7 << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xE7 << 3) | 5:
                     Debug.Assert(false);
@@ -6927,11 +6927,11 @@ namespace Aemula.Chips.Mos6502
 
                 // INX  - Increment X Register
                 case (0xE8 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xE8 << 3) | 1:
                     X = P.SetZeroNegativeFlags((byte)(X + 1));
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xE8 << 3) | 2:
                     Debug.Assert(false);
@@ -6954,11 +6954,11 @@ namespace Aemula.Chips.Mos6502
 
                 // SBC #
                 case (0xE9 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xE9 << 3) | 1:
-                    Sbc();
-                    FetchNextInstruction();
+                    Sbc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xE9 << 3) | 2:
                     Debug.Assert(false);
@@ -6981,10 +6981,10 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP 
                 case (0xEA << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xEA << 3) | 1:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xEA << 3) | 2:
                     Debug.Assert(false);
@@ -7007,11 +7007,11 @@ namespace Aemula.Chips.Mos6502
 
                 // SBC #
                 case (0xEB << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xEB << 3) | 1:
-                    Sbc();
-                    FetchNextInstruction();
+                    Sbc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xEB << 3) | 2:
                     Debug.Assert(false);
@@ -7034,20 +7034,20 @@ namespace Aemula.Chips.Mos6502
 
                 // CPX abs - Compare X Register
                 case (0xEC << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xEC << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xEC << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xEC << 3) | 3:
-                    P.SetZeroNegativeFlags((byte)(X - _data));
-                    P.C = X >= _data;
-                    FetchNextInstruction();
+                    P.SetZeroNegativeFlags((byte)(X - pins.Data));
+                    P.C = X >= pins.Data;
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xEC << 3) | 4:
                     Debug.Assert(false);
@@ -7064,19 +7064,19 @@ namespace Aemula.Chips.Mos6502
 
                 // SBC abs
                 case (0xED << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xED << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xED << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xED << 3) | 3:
-                    Sbc();
-                    FetchNextInstruction();
+                    Sbc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xED << 3) | 4:
                     Debug.Assert(false);
@@ -7093,26 +7093,26 @@ namespace Aemula.Chips.Mos6502
 
                 // INC abs - Increment Memory
                 case (0xEE << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xEE << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xEE << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xEE << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xEE << 3) | 4:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
-                    _rw = false;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
+                    pins.RW = false;
                     break;
                 case (0xEE << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xEE << 3) | 6:
                     Debug.Assert(false);
@@ -7123,27 +7123,27 @@ namespace Aemula.Chips.Mos6502
 
                 // ISB abs - Increment Memory then Subtract (undocumented, also known as ISC)
                 case (0xEF << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xEF << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xEF << 3) | 2:
-                    Address.Hi = _data;
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Hi = pins.Data;
+                    pins.Address.Lo = _ad.Lo;
                     break;
                 case (0xEF << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xEF << 3) | 4:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
-                    _rw = false;
-                    Sbc();
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
+                    pins.RW = false;
+                    Sbc(pins);
                     break;
                 case (0xEF << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xEF << 3) | 6:
                     Debug.Assert(false);
@@ -7154,27 +7154,27 @@ namespace Aemula.Chips.Mos6502
 
                 // BEQ #
                 case (0xF0 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xF0 << 3) | 1:
-                    Address = PC;
-                    _ad = PC + (sbyte)_data;
+                    pins.Address = PC;
+                    _ad = PC + (sbyte)pins.Data;
                     if (P.Z != true)
                     {
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0xF0 << 3) | 2:
-                    Address.Lo = _ad.Lo;
+                    pins.Address.Lo = _ad.Lo;
                     if (_ad.Hi == PC.Hi)
                     {
                         PC = _ad;
-                        FetchNextInstruction();
+                        FetchNextInstruction(ref pins);
                     }
                     break;
                 case (0xF0 << 3) | 3:
                     PC = _ad;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xF0 << 3) | 4:
                     Debug.Assert(false);
@@ -7191,28 +7191,28 @@ namespace Aemula.Chips.Mos6502
 
                 // SBC (zp),Y
                 case (0xF1 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xF1 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xF1 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xF1 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0xF1 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xF1 << 3) | 5:
-                    Sbc();
-                    FetchNextInstruction();
+                    Sbc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xF1 << 3) | 6:
                     Debug.Assert(false);
@@ -7223,14 +7223,14 @@ namespace Aemula.Chips.Mos6502
 
                 // JAM invalid
                 case (0xF2 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xF2 << 3) | 1:
-                    Address.Hi = 0xFF;
-                    Address.Lo = 0xFF;
-                    _data = 0xFF;
+                    pins.Address.Hi = 0xFF;
+                    pins.Address.Lo = 0xFF;
+                    pins.Data = 0xFF;
                     _ir--;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xF2 << 3) | 2:
                     Debug.Assert(false);
@@ -7253,50 +7253,50 @@ namespace Aemula.Chips.Mos6502
 
                 // ISB (zp),Y - Increment Memory then Subtract (undocumented, also known as ISC)
                 case (0xF3 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xF3 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xF3 << 3) | 2:
-                    Address.Lo = (byte)(_ad.Lo + 1);
-                    _ad.Lo = _data;
+                    pins.Address.Lo = (byte)(_ad.Lo + 1);
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xF3 << 3) | 3:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0xF3 << 3) | 4:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xF3 << 3) | 5:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xF3 << 3) | 6:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
-                    _rw = false;
-                    Sbc();
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
+                    pins.RW = false;
+                    Sbc(pins);
                     break;
                 case (0xF3 << 3) | 7:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
 
                 // NOP zp,X
                 case (0xF4 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xF4 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xF4 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0xF4 << 3) | 3:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xF4 << 3) | 4:
                     Debug.Assert(false);
@@ -7313,18 +7313,18 @@ namespace Aemula.Chips.Mos6502
 
                 // SBC zp,X
                 case (0xF5 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xF5 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xF5 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0xF5 << 3) | 3:
-                    Sbc();
-                    FetchNextInstruction();
+                    Sbc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xF5 << 3) | 4:
                     Debug.Assert(false);
@@ -7341,25 +7341,25 @@ namespace Aemula.Chips.Mos6502
 
                 // INC zp,X - Increment Memory
                 case (0xF6 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xF6 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xF6 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0xF6 << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xF6 << 3) | 4:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
-                    _rw = false;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
+                    pins.RW = false;
                     break;
                 case (0xF6 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xF6 << 3) | 6:
                     Debug.Assert(false);
@@ -7370,26 +7370,26 @@ namespace Aemula.Chips.Mos6502
 
                 // ISB zp,X - Increment Memory then Subtract (undocumented, also known as ISC)
                 case (0xF7 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xF7 << 3) | 1:
-                    _ad = _data;
-                    Address = _ad;
+                    _ad = pins.Data;
+                    pins.Address = _ad;
                     break;
                 case (0xF7 << 3) | 2:
-                    Address = (byte)(_ad.Lo + X);
+                    pins.Address = (byte)(_ad.Lo + X);
                     break;
                 case (0xF7 << 3) | 3:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xF7 << 3) | 4:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
-                    _rw = false;
-                    Sbc();
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
+                    pins.RW = false;
+                    Sbc(pins);
                     break;
                 case (0xF7 << 3) | 5:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xF7 << 3) | 6:
                     Debug.Assert(false);
@@ -7400,11 +7400,11 @@ namespace Aemula.Chips.Mos6502
 
                 // SED 
                 case (0xF8 << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xF8 << 3) | 1:
                     P.D = true;
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xF8 << 3) | 2:
                     Debug.Assert(false);
@@ -7427,24 +7427,24 @@ namespace Aemula.Chips.Mos6502
 
                 // SBC abs,Y
                 case (0xF9 << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xF9 << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xF9 << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     IncrementTimingRegisterIfNoPageCrossing(Y);
                     break;
                 case (0xF9 << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xF9 << 3) | 4:
-                    Sbc();
-                    FetchNextInstruction();
+                    Sbc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xF9 << 3) | 5:
                     Debug.Assert(false);
@@ -7458,10 +7458,10 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP 
                 case (0xFA << 3) | 0:
-                    Address = PC;
+                    pins.Address = PC;
                     break;
                 case (0xFA << 3) | 1:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xFA << 3) | 2:
                     Debug.Assert(false);
@@ -7484,31 +7484,31 @@ namespace Aemula.Chips.Mos6502
 
                 // ISB abs,Y - Increment Memory then Subtract (undocumented, also known as ISC)
                 case (0xFB << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xFB << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xFB << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + Y);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + Y);
                     break;
                 case (0xFB << 3) | 3:
-                    Address = _ad + Y;
+                    pins.Address = _ad + Y;
                     break;
                 case (0xFB << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xFB << 3) | 5:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
-                    _rw = false;
-                    Sbc();
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
+                    pins.RW = false;
+                    Sbc(pins);
                     break;
                 case (0xFB << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xFB << 3) | 7:
                     Debug.Assert(false);
@@ -7516,23 +7516,23 @@ namespace Aemula.Chips.Mos6502
 
                 // NOP abs,X
                 case (0xFC << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xFC << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xFC << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0xFC << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0xFC << 3) | 4:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xFC << 3) | 5:
                     Debug.Assert(false);
@@ -7546,24 +7546,24 @@ namespace Aemula.Chips.Mos6502
 
                 // SBC abs,X
                 case (0xFD << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xFD << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xFD << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     IncrementTimingRegisterIfNoPageCrossing(X);
                     break;
                 case (0xFD << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0xFD << 3) | 4:
-                    Sbc();
-                    FetchNextInstruction();
+                    Sbc(pins);
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xFD << 3) | 5:
                     Debug.Assert(false);
@@ -7577,30 +7577,30 @@ namespace Aemula.Chips.Mos6502
 
                 // INC abs,X - Increment Memory
                 case (0xFE << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xFE << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xFE << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0xFE << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0xFE << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xFE << 3) | 5:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
-                    _rw = false;
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
+                    pins.RW = false;
                     break;
                 case (0xFE << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xFE << 3) | 7:
                     Debug.Assert(false);
@@ -7608,31 +7608,31 @@ namespace Aemula.Chips.Mos6502
 
                 // ISB abs,X - Increment Memory then Subtract (undocumented, also known as ISC)
                 case (0xFF << 3) | 0:
-                    Address = PC++;
+                    pins.Address = PC++;
                     break;
                 case (0xFF << 3) | 1:
-                    Address = PC++;
-                    _ad.Lo = _data;
+                    pins.Address = PC++;
+                    _ad.Lo = pins.Data;
                     break;
                 case (0xFF << 3) | 2:
-                    _ad.Hi = _data;
-                    Address.Hi = _ad.Hi;
-                    Address.Lo = (byte)(_ad.Lo + X);
+                    _ad.Hi = pins.Data;
+                    pins.Address.Hi = _ad.Hi;
+                    pins.Address.Lo = (byte)(_ad.Lo + X);
                     break;
                 case (0xFF << 3) | 3:
-                    Address = _ad + X;
+                    pins.Address = _ad + X;
                     break;
                 case (0xFF << 3) | 4:
-                    _ad.Lo = _data;
-                    _rw = false;
+                    _ad.Lo = pins.Data;
+                    pins.RW = false;
                     break;
                 case (0xFF << 3) | 5:
-                    _data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
-                    _rw = false;
-                    Sbc();
+                    pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));
+                    pins.RW = false;
+                    Sbc(pins);
                     break;
                 case (0xFF << 3) | 6:
-                    FetchNextInstruction();
+                    FetchNextInstruction(ref pins);
                     break;
                 case (0xFF << 3) | 7:
                     Debug.Assert(false);

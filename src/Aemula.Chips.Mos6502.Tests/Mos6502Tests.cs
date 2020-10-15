@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -12,21 +13,17 @@ namespace Aemula.Chips.Mos6502.Tests
         {
             var rom = File.ReadAllBytes(Path.Combine("Assets", "AllSuiteA.bin"));
             var ram = new byte[0x4000];
-            var cpu = new Mos6502();
-
-            cpu.Res = false;
-            cpu.Res = true;
+            var (cpu, pins) = Mos6502.Create(Mos6502Options.Default);
 
             while (cpu.PC.Value != 0x45C2)
             {
-                cpu.Phi0 = true;
-                cpu.Phi0 = false;
+                pins = cpu.Tick(pins);
 
-                var address = cpu.Address.Value;
+                var address = pins.Address.Value;
 
-                if (cpu.RW)
+                if (pins.RW)
                 {
-                    cpu.Data = address switch
+                    pins.Data = address switch
                     {
                         _ when address <= 0x3FFF => ram[address],
                         _                        => rom[address - 0x4000]
@@ -36,7 +33,7 @@ namespace Aemula.Chips.Mos6502.Tests
                 {
                     if (address <= 0x3FFF)
                     {
-                        ram[address] = cpu.Data;
+                        ram[address] = pins.Data;
                     }
                 }
             }
@@ -54,25 +51,21 @@ namespace Aemula.Chips.Mos6502.Tests
             ram[0xFFFC] = 0x00;
             ram[0xFFFD] = 0x04;
 
-            var cpu = new Mos6502();
-
-            cpu.Res = false;
-            cpu.Res = true;
+            var (cpu, pins) = Mos6502.Create(Mos6502Options.Default);
 
             while (cpu.PC.Value != 0x3399 && cpu.PC.Value != 0xD0FE)
             {
-                cpu.Phi0 = true;
-                cpu.Phi0 = false;
+                pins = cpu.Tick(pins);
 
-                var address = cpu.Address.Value;
+                var address = pins.Address.Value;
 
-                if (cpu.RW)
+                if (pins.RW)
                 {
-                    cpu.Data = ram[address];
+                    pins.Data = ram[address];
                 }
                 else
                 {
-                    ram[address] = cpu.Data;
+                    ram[address] = pins.Data;
                 }
             }
 
@@ -98,13 +91,7 @@ namespace Aemula.Chips.Mos6502.Tests
             // APU and I/O registers - for the purposes of this test, treat them as RAM.
             var apu = new byte[0x18];
 
-            var cpu = new Mos6502(new Mos6502Options
-            {
-                BcdEnabled = false
-            });
-
-            cpu.Res = false;
-            cpu.Res = true;
+            var (cpu, pins) = Mos6502.Create(new Mos6502Options(bcdEnabled: false));
 
             using (var streamWriter = new StreamWriter("nestest_aemula.log"))
             {
@@ -113,8 +100,7 @@ namespace Aemula.Chips.Mos6502.Tests
 
                 while (cpu.PC.Value != 0xC66E)
                 {
-                    cpu.Phi0 = true;
-                    cpu.Phi0 = false;
+                    pins = cpu.Tick(pins);
 
                     cycles += 1;
 
@@ -123,16 +109,16 @@ namespace Aemula.Chips.Mos6502.Tests
                         shouldLog = true;
                     }
 
-                    if (shouldLog && cpu.Sync)
+                    if (shouldLog && pins.Sync)
                     {
                         streamWriter.WriteLine($"{cpu.PC.Value:X4}  A:{cpu.A:X2} X:{cpu.X:X2} Y:{cpu.Y:X2} P:{cpu.P.AsByte(false):X2} SP:{cpu.SP:X2} CPUC:{cycles - 7}");
                     }
 
-                    var address = cpu.Address.Value;
+                    var address = pins.Address.Value;
 
-                    if (cpu.RW)
+                    if (pins.RW)
                     {
-                        cpu.Data = address switch
+                        pins.Data = address switch
                         {
                             _ when address <= 0x1FFF                      => ram[address & 0x07FF],
                             _ when address >= 0x4000 && address <= 0x4017 => apu[address - 0x4000],
@@ -142,7 +128,7 @@ namespace Aemula.Chips.Mos6502.Tests
 
                         if (shouldLog)
                         {
-                            streamWriter.WriteLine($"      READ      ${address:X4} => ${cpu.Data:X2}");
+                            streamWriter.WriteLine($"      READ      ${address:X4} => ${pins.Data:X2}");
                         }
                     }
                     else
@@ -150,17 +136,17 @@ namespace Aemula.Chips.Mos6502.Tests
                         switch (address)
                         {
                             case var _ when address <= 0x1FFF:
-                                ram[address & 0x07FF] = cpu.Data;
+                                ram[address & 0x07FF] = pins.Data;
                                 break;
 
                             case var _ when address >= 0x4000 && address <= 0x4017:
-                                apu[address - 0x4000] = cpu.Data;
+                                apu[address - 0x4000] = pins.Data;
                                 break;
                         }
 
                         if (shouldLog)
                         {
-                            streamWriter.WriteLine($"      WRITE     ${address:X4} <= ${cpu.Data:X2}");
+                            streamWriter.WriteLine($"      WRITE     ${address:X4} <= ${pins.Data:X2}");
                         }
                     }
                 }
@@ -189,12 +175,9 @@ namespace Aemula.Chips.Mos6502.Tests
                 _ => ((char)character).ToString()
             };
 
-            static void SetupTest(string fileName, out byte[] ram, out Mos6502 cpu)
+            static void SetupTest(string fileName, out byte[] ram, out Mos6502 cpu, out Mos6502Pins pins)
             {
-                cpu = new Mos6502();
-
-                cpu.Res = false;
-                cpu.Res = true;
+                (cpu, pins) = Mos6502.Create(Mos6502Options.Default);
 
                 ram = new byte[0x10000];
 
@@ -262,17 +245,16 @@ namespace Aemula.Chips.Mos6502.Tests
 
             while (true)
             {
-                SetupTest(testFileName, out var ram, out var cpu);
+                SetupTest(testFileName, out var ram, out var cpu, out var pins);
 
                 var continueTest = true;
                 while (continueTest)
                 {
-                    cpu.Phi0 = true;
-                    cpu.Phi0 = false;
+                    pins = cpu.Tick(pins);
 
-                    var address = cpu.Address.Value;
+                    var address = pins.Address.Value;
 
-                    if (cpu.RW)
+                    if (pins.RW)
                     {
                         switch (address)
                         {
@@ -307,15 +289,14 @@ namespace Aemula.Chips.Mos6502.Tests
 
                             case 0x8000: // Exit
                             case 0xA474:
-                                Assert.True(false, log.ToString());
-                                break;
+                                throw new InvalidOperationException(log.ToString());
                         }
 
-                        cpu.Data = ram[address];
+                        pins.Data = ram[address];
                     }
                     else
                     {
-                        ram[address] = cpu.Data;
+                        ram[address] = pins.Data;
                     }
                 }
             }

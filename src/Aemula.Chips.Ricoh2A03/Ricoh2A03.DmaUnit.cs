@@ -1,4 +1,5 @@
-﻿using Aemula.Bus;
+﻿using System;
+using Aemula.Bus;
 
 namespace Aemula.Chips.Ricoh2A03
 {
@@ -57,7 +58,8 @@ namespace Aemula.Chips.Ricoh2A03
                             DmaState = DmaState.Inactive;
 
                             // Let CPU continue on next clock cycle.
-                            _cpu.Rdy = true;
+                            throw new NotImplementedException();
+                            //_cpu.Rdy = true;
                         }
                         else
                         {

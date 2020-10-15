@@ -8,6 +8,21 @@ namespace Aemula.Chips.Mos6502
 {
     public sealed partial class Mos6502
     {
+        public static (Mos6502, Mos6502Pins) Create(Mos6502Options options)
+        {
+            var mos6502 = new Mos6502(options);
+
+            var pins = new Mos6502Pins
+            {
+                Rdy = true,
+                Sync = true,
+                Res = true,
+                RW = true
+            };
+
+            return (mos6502, pins);
+        }
+
         // Registers
         public byte A;
         public byte X;
@@ -38,25 +53,45 @@ namespace Aemula.Chips.Mos6502
 
         private readonly bool _bcdEnabled;
 
-        public Mos6502()
-            : this(new Mos6502Options { BcdEnabled = true })
-        {
-        }
-
-        public Mos6502(Mos6502Options options)
+        private Mos6502(Mos6502Options options)
         {
             _bcdEnabled = options.BcdEnabled;
-
-            _rdy = true;
-            _sync = true;
-            _res = true;
-            _rw = true;
+            _brkFlags = BrkFlags.Reset;
         }
 
-        private void FetchNextInstruction()
+        public Mos6502Pins Tick(Mos6502Pins pins)
         {
-            Address = PC;
-            _sync = true;
+            if (pins.Sync | pins.Irq | pins.Nmi | pins.Rdy | pins.Res)
+            {
+                // TODO: Interrupt stuff.
+
+                if (pins.Sync)
+                {
+                    _ir = pins.Data;
+                    _tr = 0;
+                    pins.Sync = false;
+
+                    if (_brkFlags != BrkFlags.None)
+                    {
+                        _ir = 0;
+                        pins.Res = false;
+                    }
+                    else
+                    {
+                        PC += 1;
+                    }
+                }
+            }
+
+            // Assume we're going to read.
+            pins.RW = true;
+
+            ExecuteInstruction(ref pins);
+
+            // Increment timing register.
+            _tr += 1;
+
+            return pins;
         }
 
         [Flags]
@@ -66,33 +101,6 @@ namespace Aemula.Chips.Mos6502
             Irq   = 1,
             Nmi   = 2,
             Reset = 4,
-        }
-
-        /// <summary>
-        /// Increments the timing register (which has the effect of skipping the next instruction cycle)
-        /// if no page boundary is crossed when <paramref name="addend"/> is added to <see cref="_ad"/>.
-        /// 
-        /// This implementation goes to some effort to avoid branching.
-        ///
-        /// Thanks to Andre Weissflog's code at
-        /// https://github.com/floooh/chips/blob/fdef73e0e65ebb5aa2bf33e226ba5b108a7a43fb/codegen/m6502_gen.py#L208
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void IncrementTimingRegisterIfNoPageCrossing(byte addend)
-        {
-            // Original high-byte
-            var original = _ad.Hi;
-
-            // High-byte after adding value
-            var modified = (_ad + addend).Hi;
-
-            // Delta will be either 0 (if it didn't cross page) or -1 (if it did).
-            var delta = original - modified;
-
-            // Increment will be either 1 (if it didn't cross page) or 0 (if it did).
-            var timingRegisterIncrement = ~delta & 1;
-
-            _tr += (byte)timingRegisterIncrement;
         }
 
         public IEnumerable<DebuggerWindow> CreateDebuggerWindows()
