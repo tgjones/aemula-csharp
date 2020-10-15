@@ -59,7 +59,7 @@ namespace Aemula.Chips.Mos6502
             _brkFlags = BrkFlags.Reset;
         }
 
-        public Mos6502Pins Tick(Mos6502Pins pins)
+        public void Tick(ref Mos6502Pins pins)
         {
             if (pins.Sync | pins.Irq | pins.Nmi | pins.Rdy | pins.Res)
             {
@@ -90,8 +90,6 @@ namespace Aemula.Chips.Mos6502
 
             // Increment timing register.
             _tr += 1;
-
-            return pins;
         }
 
         [Flags]

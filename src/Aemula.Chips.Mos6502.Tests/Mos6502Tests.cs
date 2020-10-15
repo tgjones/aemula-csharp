@@ -17,7 +17,7 @@ namespace Aemula.Chips.Mos6502.Tests
 
             while (cpu.PC.Value != 0x45C2)
             {
-                pins = cpu.Tick(pins);
+                cpu.Tick(ref pins);
 
                 var address = pins.Address.Value;
 
@@ -55,7 +55,7 @@ namespace Aemula.Chips.Mos6502.Tests
 
             while (cpu.PC.Value != 0x3399 && cpu.PC.Value != 0xD0FE)
             {
-                pins = cpu.Tick(pins);
+                cpu.Tick(ref pins);
 
                 var address = pins.Address.Value;
 
@@ -100,7 +100,7 @@ namespace Aemula.Chips.Mos6502.Tests
 
                 while (cpu.PC.Value != 0xC66E)
                 {
-                    pins = cpu.Tick(pins);
+                    cpu.Tick(ref pins);
 
                     cycles += 1;
 
@@ -250,7 +250,7 @@ namespace Aemula.Chips.Mos6502.Tests
                 var continueTest = true;
                 while (continueTest)
                 {
-                    pins = cpu.Tick(pins);
+                    cpu.Tick(ref pins);
 
                     var address = pins.Address.Value;
 
