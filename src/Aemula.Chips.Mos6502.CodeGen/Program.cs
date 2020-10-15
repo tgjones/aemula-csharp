@@ -755,12 +755,12 @@ namespace Aemula.Chips.Mos6502.CodeGen
 
                     case "EOR":
                         Description = "Exclusive OR";
-                        Add("A = P.SetZeroNegativeFlags((byte)(A ^ _data));");
+                        Add(OpsEor);
                         break;
 
                     case "ORA":
                         Description = "Logical Inclusive OR";
-                        Add("A = P.SetZeroNegativeFlags((byte)(A | _data));");
+                        Add(OpsOra);
                         break;
 
                     case "BIT":
@@ -816,10 +816,13 @@ namespace Aemula.Chips.Mos6502.CodeGen
                             "P.SetZeroNegativeFlags(A);");
                         break;
 
+                    case "ASR":
+                        Add(OpsAnd.Concat(OpsLsra).ToArray());
+                        break;
+
                     case "ADC":
                     case "SBC":
                     case "ARR":
-                    case "ASR":
                         Add($"{GetMethodName()}();");
                         break;
 
@@ -828,11 +831,19 @@ namespace Aemula.Chips.Mos6502.CodeGen
                         Add("A = RolHelper(A);");
                         break;
 
-                    // Accumulator
                     case "ASL" when addressingMode == AddressingMode.Accumulator:
+                        Description = "Arithmetic Shift Left";
+                        Add("A = AslHelper(A);");
+                        break;
+
                     case "LSR" when addressingMode == AddressingMode.Accumulator:
+                        Description = "Logical Shift Right";
+                        Add(OpsLsra);
+                        break;
+
                     case "ROR" when addressingMode == AddressingMode.Accumulator:
-                        Add($"{GetMethodName()}a();");
+                        Description = "Rotate Right";
+                        Add(OpsRora);
                         break;
 
                     case "DEC":
@@ -867,18 +878,43 @@ namespace Aemula.Chips.Mos6502.CodeGen
 
                     case "RLA":
                         Description = "ROL + AND (undocumented)";
+                        AddRmwCycle();
                         Add(OpsRol.Concat(OpsAnd).ToArray());
                         break;
 
-                    // Read / modify / write memory
                     case "ASL":
-                    case "LSR":
-                    case "ROR":
-                    case "RRA":
-                    case "SLO":
-                    case "SRE":
+                        Description = "Arithmetic Shift Left";
                         AddRmwCycle();
-                        Add($"{GetMethodName()}();");
+                        Add(OpsAsl);
+                        break;
+
+                    case "SLO":
+                        Description = "ASL + ORA (undocumented)";
+                        AddRmwCycle();
+                        Add(OpsAsl.Concat(OpsOra).ToArray());
+                        break;
+
+                    case "LSR":
+                        Description = "Logical Shift Right";
+                        AddRmwCycle();
+                        Add(OpsLsr);
+                        break;
+
+                    case "SRE":
+                        Description = "LSR + EOR (undocumented)";
+                        AddRmwCycle();
+                        Add(OpsLsr.Concat(OpsEor).ToArray());
+                        break;
+
+                    case "RRA":
+                        Description = "ROR + ADC (undocumented)";
+                        AddRmwCycle();
+                        Add(OpsRor.Concat(OpsAdc).ToArray());
+                        break;
+
+                    case "ROR":
+                        AddRmwCycle();
+                        Add(OpsRor);
                         break;
 
                     // Branch
@@ -952,9 +988,20 @@ namespace Aemula.Chips.Mos6502.CodeGen
                 $"P.C = {register} >= _data;"
             };
 
+            private static readonly string[] OpsAdc =
+            {
+                "Adc();"
+            };
+
             private static readonly string[] OpsAnd =
             {
-                "A = P.SetZeroNegativeFlags((byte)(A & _data));"
+                "And();"
+            };
+
+            private static readonly string[] OpsAsl =
+            {
+                "_data = AslHelper(_ad.Lo);",
+                "_rw = false;"
             };
 
             private static readonly string[] OpsCmp = GetOpsCmp("A");
@@ -965,16 +1012,48 @@ namespace Aemula.Chips.Mos6502.CodeGen
                 "_rw = false;"
             };
 
+            private static readonly string[] OpsEor =
+            {
+                "A = P.SetZeroNegativeFlags((byte)(A ^ _data));"
+            };
+
             private static readonly string[] OpsInc =
             {
                 "_data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));",
                 "_rw = false;"
             };
 
+            private static readonly string[] OpsLsr =
+            {
+                "_data = LsrHelper(_ad.Lo);",
+                "_rw = false;"
+            };
+
+            private static readonly string[] OpsLsra =
+            {
+                "A = LsrHelper(A);"
+            };
+
+            private static readonly string[] OpsOra =
+            {
+                "A = P.SetZeroNegativeFlags((byte)(A | _data));"
+            };
+
             private static readonly string[] OpsRol =
             {
                 "_data = RolHelper(_ad.Lo);",
                 "_rw = false;"
+            };
+
+            private static readonly string[] OpsRor =
+            {
+                "_data = RorHelper(_ad.Lo);",
+                "_rw = false;"
+            };
+
+            private static readonly string[] OpsRora =
+            {
+                "Rora();"
             };
 
             private static readonly string[] OpsSha =

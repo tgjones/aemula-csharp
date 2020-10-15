@@ -126,7 +126,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SLO (zp,X)
+                // SLO (zp,X) - ASL + ORA (undocumented)
                 case (0x03 << 3) | 0:
                     Address = PC++;
                     break;
@@ -151,7 +151,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x03 << 3) | 6:
-                    Slo();
+                    _data = AslHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | _data));
                     break;
                 case (0x03 << 3) | 7:
                     FetchNextInstruction();
@@ -210,7 +212,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // ASL zp
+                // ASL zp - Arithmetic Shift Left
                 case (0x06 << 3) | 0:
                     Address = PC++;
                     break;
@@ -222,7 +224,8 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x06 << 3) | 3:
-                    Asl();
+                    _data = AslHelper(_ad.Lo);
+                    _rw = false;
                     break;
                 case (0x06 << 3) | 4:
                     FetchNextInstruction();
@@ -237,7 +240,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SLO zp
+                // SLO zp - ASL + ORA (undocumented)
                 case (0x07 << 3) | 0:
                     Address = PC++;
                     break;
@@ -249,7 +252,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x07 << 3) | 3:
-                    Slo();
+                    _data = AslHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | _data));
                     break;
                 case (0x07 << 3) | 4:
                     FetchNextInstruction();
@@ -320,12 +325,12 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // ASL 
+                // ASL  - Arithmetic Shift Left
                 case (0x0A << 3) | 0:
                     Address = PC;
                     break;
                 case (0x0A << 3) | 1:
-                    Asla();
+                    A = AslHelper(A);
                     FetchNextInstruction();
                     break;
                 case (0x0A << 3) | 2:
@@ -433,7 +438,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // ASL abs
+                // ASL abs - Arithmetic Shift Left
                 case (0x0E << 3) | 0:
                     Address = PC++;
                     break;
@@ -450,7 +455,8 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x0E << 3) | 4:
-                    Asl();
+                    _data = AslHelper(_ad.Lo);
+                    _rw = false;
                     break;
                 case (0x0E << 3) | 5:
                     FetchNextInstruction();
@@ -462,7 +468,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SLO abs
+                // SLO abs - ASL + ORA (undocumented)
                 case (0x0F << 3) | 0:
                     Address = PC++;
                     break;
@@ -479,7 +485,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x0F << 3) | 4:
-                    Slo();
+                    _data = AslHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | _data));
                     break;
                 case (0x0F << 3) | 5:
                     FetchNextInstruction();
@@ -590,7 +598,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SLO (zp),Y
+                // SLO (zp),Y - ASL + ORA (undocumented)
                 case (0x13 << 3) | 0:
                     Address = PC++;
                     break;
@@ -615,7 +623,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x13 << 3) | 6:
-                    Slo();
+                    _data = AslHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | _data));
                     break;
                 case (0x13 << 3) | 7:
                     FetchNextInstruction();
@@ -676,7 +686,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // ASL zp,X
+                // ASL zp,X - Arithmetic Shift Left
                 case (0x16 << 3) | 0:
                     Address = PC++;
                     break;
@@ -692,7 +702,8 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x16 << 3) | 4:
-                    Asl();
+                    _data = AslHelper(_ad.Lo);
+                    _rw = false;
                     break;
                 case (0x16 << 3) | 5:
                     FetchNextInstruction();
@@ -704,7 +715,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SLO zp,X
+                // SLO zp,X - ASL + ORA (undocumented)
                 case (0x17 << 3) | 0:
                     Address = PC++;
                     break;
@@ -720,7 +731,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x17 << 3) | 4:
-                    Slo();
+                    _data = AslHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | _data));
                     break;
                 case (0x17 << 3) | 5:
                     FetchNextInstruction();
@@ -816,7 +829,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SLO abs,Y
+                // SLO abs,Y - ASL + ORA (undocumented)
                 case (0x1B << 3) | 0:
                     Address = PC++;
                     break;
@@ -837,7 +850,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x1B << 3) | 5:
-                    Slo();
+                    _data = AslHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | _data));
                     break;
                 case (0x1B << 3) | 6:
                     FetchNextInstruction();
@@ -907,7 +922,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // ASL abs,X
+                // ASL abs,X - Arithmetic Shift Left
                 case (0x1E << 3) | 0:
                     Address = PC++;
                     break;
@@ -928,7 +943,8 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x1E << 3) | 5:
-                    Asl();
+                    _data = AslHelper(_ad.Lo);
+                    _rw = false;
                     break;
                 case (0x1E << 3) | 6:
                     FetchNextInstruction();
@@ -937,7 +953,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SLO abs,X
+                // SLO abs,X - ASL + ORA (undocumented)
                 case (0x1F << 3) | 0:
                     Address = PC++;
                     break;
@@ -958,7 +974,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x1F << 3) | 5:
-                    Slo();
+                    _data = AslHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A | _data));
                     break;
                 case (0x1F << 3) | 6:
                     FetchNextInstruction();
@@ -1022,7 +1040,7 @@ namespace Aemula.Chips.Mos6502
                     Address.Lo = _ad.Lo;
                     break;
                 case (0x21 << 3) | 5:
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
+                    And();
                     FetchNextInstruction();
                     break;
                 case (0x21 << 3) | 6:
@@ -1083,15 +1101,16 @@ namespace Aemula.Chips.Mos6502
                     Address.Lo = _ad.Lo;
                     break;
                 case (0x23 << 3) | 5:
-                    _data = RolHelper(_ad.Lo);
+                    _ad.Lo = _data;
                     _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
                     break;
                 case (0x23 << 3) | 6:
-                    FetchNextInstruction();
+                    _data = RolHelper(_ad.Lo);
+                    _rw = false;
+                    And();
                     break;
                 case (0x23 << 3) | 7:
-                    Debug.Assert(false);
+                    FetchNextInstruction();
                     break;
 
                 // BIT zp - Bit Test
@@ -1131,7 +1150,7 @@ namespace Aemula.Chips.Mos6502
                     Address = _data;
                     break;
                 case (0x25 << 3) | 2:
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
+                    And();
                     FetchNextInstruction();
                     break;
                 case (0x25 << 3) | 3:
@@ -1186,15 +1205,16 @@ namespace Aemula.Chips.Mos6502
                     Address = _data;
                     break;
                 case (0x27 << 3) | 2:
-                    _data = RolHelper(_ad.Lo);
+                    _ad.Lo = _data;
                     _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
                     break;
                 case (0x27 << 3) | 3:
-                    FetchNextInstruction();
+                    _data = RolHelper(_ad.Lo);
+                    _rw = false;
+                    And();
                     break;
                 case (0x27 << 3) | 4:
-                    Debug.Assert(false);
+                    FetchNextInstruction();
                     break;
                 case (0x27 << 3) | 5:
                     Debug.Assert(false);
@@ -1239,7 +1259,7 @@ namespace Aemula.Chips.Mos6502
                     Address = PC++;
                     break;
                 case (0x29 << 3) | 1:
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
+                    And();
                     FetchNextInstruction();
                     break;
                 case (0x29 << 3) | 2:
@@ -1361,7 +1381,7 @@ namespace Aemula.Chips.Mos6502
                     Address.Lo = _ad.Lo;
                     break;
                 case (0x2D << 3) | 3:
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
+                    And();
                     FetchNextInstruction();
                     break;
                 case (0x2D << 3) | 4:
@@ -1420,15 +1440,16 @@ namespace Aemula.Chips.Mos6502
                     Address.Lo = _ad.Lo;
                     break;
                 case (0x2F << 3) | 3:
-                    _data = RolHelper(_ad.Lo);
+                    _ad.Lo = _data;
                     _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
                     break;
                 case (0x2F << 3) | 4:
-                    FetchNextInstruction();
+                    _data = RolHelper(_ad.Lo);
+                    _rw = false;
+                    And();
                     break;
                 case (0x2F << 3) | 5:
-                    Debug.Assert(false);
+                    FetchNextInstruction();
                     break;
                 case (0x2F << 3) | 6:
                     Debug.Assert(false);
@@ -1496,7 +1517,7 @@ namespace Aemula.Chips.Mos6502
                     Address = _ad + Y;
                     break;
                 case (0x31 << 3) | 5:
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
+                    And();
                     FetchNextInstruction();
                     break;
                 case (0x31 << 3) | 6:
@@ -1557,15 +1578,16 @@ namespace Aemula.Chips.Mos6502
                     Address = _ad + Y;
                     break;
                 case (0x33 << 3) | 5:
-                    _data = RolHelper(_ad.Lo);
+                    _ad.Lo = _data;
                     _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
                     break;
                 case (0x33 << 3) | 6:
-                    FetchNextInstruction();
+                    _data = RolHelper(_ad.Lo);
+                    _rw = false;
+                    And();
                     break;
                 case (0x33 << 3) | 7:
-                    Debug.Assert(false);
+                    FetchNextInstruction();
                     break;
 
                 // NOP zp,X
@@ -1607,7 +1629,7 @@ namespace Aemula.Chips.Mos6502
                     Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x35 << 3) | 3:
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
+                    And();
                     FetchNextInstruction();
                     break;
                 case (0x35 << 3) | 4:
@@ -1664,15 +1686,16 @@ namespace Aemula.Chips.Mos6502
                     Address = (byte)(_ad.Lo + X);
                     break;
                 case (0x37 << 3) | 3:
-                    _data = RolHelper(_ad.Lo);
+                    _ad.Lo = _data;
                     _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
                     break;
                 case (0x37 << 3) | 4:
-                    FetchNextInstruction();
+                    _data = RolHelper(_ad.Lo);
+                    _rw = false;
+                    And();
                     break;
                 case (0x37 << 3) | 5:
-                    Debug.Assert(false);
+                    FetchNextInstruction();
                     break;
                 case (0x37 << 3) | 6:
                     Debug.Assert(false);
@@ -1726,7 +1749,7 @@ namespace Aemula.Chips.Mos6502
                     Address = _ad + Y;
                     break;
                 case (0x39 << 3) | 4:
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
+                    And();
                     FetchNextInstruction();
                     break;
                 case (0x39 << 3) | 5:
@@ -1782,15 +1805,16 @@ namespace Aemula.Chips.Mos6502
                     Address = _ad + Y;
                     break;
                 case (0x3B << 3) | 4:
-                    _data = RolHelper(_ad.Lo);
+                    _ad.Lo = _data;
                     _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
                     break;
                 case (0x3B << 3) | 5:
-                    FetchNextInstruction();
+                    _data = RolHelper(_ad.Lo);
+                    _rw = false;
+                    And();
                     break;
                 case (0x3B << 3) | 6:
-                    Debug.Assert(false);
+                    FetchNextInstruction();
                     break;
                 case (0x3B << 3) | 7:
                     Debug.Assert(false);
@@ -1844,7 +1868,7 @@ namespace Aemula.Chips.Mos6502
                     Address = _ad + X;
                     break;
                 case (0x3D << 3) | 4:
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
+                    And();
                     FetchNextInstruction();
                     break;
                 case (0x3D << 3) | 5:
@@ -1905,15 +1929,16 @@ namespace Aemula.Chips.Mos6502
                     Address = _ad + X;
                     break;
                 case (0x3F << 3) | 4:
-                    _data = RolHelper(_ad.Lo);
+                    _ad.Lo = _data;
                     _rw = false;
-                    A = P.SetZeroNegativeFlags((byte)(A & _data));
                     break;
                 case (0x3F << 3) | 5:
-                    FetchNextInstruction();
+                    _data = RolHelper(_ad.Lo);
+                    _rw = false;
+                    And();
                     break;
                 case (0x3F << 3) | 6:
-                    Debug.Assert(false);
+                    FetchNextInstruction();
                     break;
                 case (0x3F << 3) | 7:
                     Debug.Assert(false);
@@ -2011,7 +2036,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SRE (zp,X)
+                // SRE (zp,X) - LSR + EOR (undocumented)
                 case (0x43 << 3) | 0:
                     Address = PC++;
                     break;
@@ -2036,7 +2061,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x43 << 3) | 6:
-                    Sre();
+                    _data = LsrHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
                     break;
                 case (0x43 << 3) | 7:
                     FetchNextInstruction();
@@ -2095,7 +2122,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // LSR zp
+                // LSR zp - Logical Shift Right
                 case (0x46 << 3) | 0:
                     Address = PC++;
                     break;
@@ -2107,7 +2134,8 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x46 << 3) | 3:
-                    Lsr();
+                    _data = LsrHelper(_ad.Lo);
+                    _rw = false;
                     break;
                 case (0x46 << 3) | 4:
                     FetchNextInstruction();
@@ -2122,7 +2150,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SRE zp
+                // SRE zp - LSR + EOR (undocumented)
                 case (0x47 << 3) | 0:
                     Address = PC++;
                     break;
@@ -2134,7 +2162,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x47 << 3) | 3:
-                    Sre();
+                    _data = LsrHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
                     break;
                 case (0x47 << 3) | 4:
                     FetchNextInstruction();
@@ -2205,12 +2235,12 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // LSR 
+                // LSR  - Logical Shift Right
                 case (0x4A << 3) | 0:
                     Address = PC;
                     break;
                 case (0x4A << 3) | 1:
-                    Lsra();
+                    A = LsrHelper(A);
                     FetchNextInstruction();
                     break;
                 case (0x4A << 3) | 2:
@@ -2237,7 +2267,8 @@ namespace Aemula.Chips.Mos6502
                     Address = PC++;
                     break;
                 case (0x4B << 3) | 1:
-                    Asr();
+                    And();
+                    A = LsrHelper(A);
                     FetchNextInstruction();
                     break;
                 case (0x4B << 3) | 2:
@@ -2318,7 +2349,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // LSR abs
+                // LSR abs - Logical Shift Right
                 case (0x4E << 3) | 0:
                     Address = PC++;
                     break;
@@ -2335,7 +2366,8 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x4E << 3) | 4:
-                    Lsr();
+                    _data = LsrHelper(_ad.Lo);
+                    _rw = false;
                     break;
                 case (0x4E << 3) | 5:
                     FetchNextInstruction();
@@ -2347,7 +2379,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SRE abs
+                // SRE abs - LSR + EOR (undocumented)
                 case (0x4F << 3) | 0:
                     Address = PC++;
                     break;
@@ -2364,7 +2396,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x4F << 3) | 4:
-                    Sre();
+                    _data = LsrHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
                     break;
                 case (0x4F << 3) | 5:
                     FetchNextInstruction();
@@ -2475,7 +2509,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SRE (zp),Y
+                // SRE (zp),Y - LSR + EOR (undocumented)
                 case (0x53 << 3) | 0:
                     Address = PC++;
                     break;
@@ -2500,7 +2534,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x53 << 3) | 6:
-                    Sre();
+                    _data = LsrHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
                     break;
                 case (0x53 << 3) | 7:
                     FetchNextInstruction();
@@ -2561,7 +2597,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // LSR zp,X
+                // LSR zp,X - Logical Shift Right
                 case (0x56 << 3) | 0:
                     Address = PC++;
                     break;
@@ -2577,7 +2613,8 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x56 << 3) | 4:
-                    Lsr();
+                    _data = LsrHelper(_ad.Lo);
+                    _rw = false;
                     break;
                 case (0x56 << 3) | 5:
                     FetchNextInstruction();
@@ -2589,7 +2626,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SRE zp,X
+                // SRE zp,X - LSR + EOR (undocumented)
                 case (0x57 << 3) | 0:
                     Address = PC++;
                     break;
@@ -2605,7 +2642,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x57 << 3) | 4:
-                    Sre();
+                    _data = LsrHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
                     break;
                 case (0x57 << 3) | 5:
                     FetchNextInstruction();
@@ -2701,7 +2740,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SRE abs,Y
+                // SRE abs,Y - LSR + EOR (undocumented)
                 case (0x5B << 3) | 0:
                     Address = PC++;
                     break;
@@ -2722,7 +2761,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x5B << 3) | 5:
-                    Sre();
+                    _data = LsrHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
                     break;
                 case (0x5B << 3) | 6:
                     FetchNextInstruction();
@@ -2792,7 +2833,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // LSR abs,X
+                // LSR abs,X - Logical Shift Right
                 case (0x5E << 3) | 0:
                     Address = PC++;
                     break;
@@ -2813,7 +2854,8 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x5E << 3) | 5:
-                    Lsr();
+                    _data = LsrHelper(_ad.Lo);
+                    _rw = false;
                     break;
                 case (0x5E << 3) | 6:
                     FetchNextInstruction();
@@ -2822,7 +2864,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // SRE abs,X
+                // SRE abs,X - LSR + EOR (undocumented)
                 case (0x5F << 3) | 0:
                     Address = PC++;
                     break;
@@ -2843,7 +2885,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x5F << 3) | 5:
-                    Sre();
+                    _data = LsrHelper(_ad.Lo);
+                    _rw = false;
+                    A = P.SetZeroNegativeFlags((byte)(A ^ _data));
                     break;
                 case (0x5F << 3) | 6:
                     FetchNextInstruction();
@@ -2943,7 +2987,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // RRA (zp,X)
+                // RRA (zp,X) - ROR + ADC (undocumented)
                 case (0x63 << 3) | 0:
                     Address = PC++;
                     break;
@@ -2968,7 +3012,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x63 << 3) | 6:
-                    Rra();
+                    _data = RorHelper(_ad.Lo);
+                    _rw = false;
+                    Adc();
                     break;
                 case (0x63 << 3) | 7:
                     FetchNextInstruction();
@@ -3039,7 +3085,8 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x66 << 3) | 3:
-                    Ror();
+                    _data = RorHelper(_ad.Lo);
+                    _rw = false;
                     break;
                 case (0x66 << 3) | 4:
                     FetchNextInstruction();
@@ -3054,7 +3101,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // RRA zp
+                // RRA zp - ROR + ADC (undocumented)
                 case (0x67 << 3) | 0:
                     Address = PC++;
                     break;
@@ -3066,7 +3113,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x67 << 3) | 3:
-                    Rra();
+                    _data = RorHelper(_ad.Lo);
+                    _rw = false;
+                    Adc();
                     break;
                 case (0x67 << 3) | 4:
                     FetchNextInstruction();
@@ -3136,7 +3185,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // ROR 
+                // ROR  - Rotate Right
                 case (0x6A << 3) | 0:
                     Address = PC;
                     break;
@@ -3268,7 +3317,8 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x6E << 3) | 4:
-                    Ror();
+                    _data = RorHelper(_ad.Lo);
+                    _rw = false;
                     break;
                 case (0x6E << 3) | 5:
                     FetchNextInstruction();
@@ -3280,7 +3330,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // RRA abs
+                // RRA abs - ROR + ADC (undocumented)
                 case (0x6F << 3) | 0:
                     Address = PC++;
                     break;
@@ -3297,7 +3347,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x6F << 3) | 4:
-                    Rra();
+                    _data = RorHelper(_ad.Lo);
+                    _rw = false;
+                    Adc();
                     break;
                 case (0x6F << 3) | 5:
                     FetchNextInstruction();
@@ -3408,7 +3460,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // RRA (zp),Y
+                // RRA (zp),Y - ROR + ADC (undocumented)
                 case (0x73 << 3) | 0:
                     Address = PC++;
                     break;
@@ -3433,7 +3485,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x73 << 3) | 6:
-                    Rra();
+                    _data = RorHelper(_ad.Lo);
+                    _rw = false;
+                    Adc();
                     break;
                 case (0x73 << 3) | 7:
                     FetchNextInstruction();
@@ -3510,7 +3564,8 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x76 << 3) | 4:
-                    Ror();
+                    _data = RorHelper(_ad.Lo);
+                    _rw = false;
                     break;
                 case (0x76 << 3) | 5:
                     FetchNextInstruction();
@@ -3522,7 +3577,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // RRA zp,X
+                // RRA zp,X - ROR + ADC (undocumented)
                 case (0x77 << 3) | 0:
                     Address = PC++;
                     break;
@@ -3538,7 +3593,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x77 << 3) | 4:
-                    Rra();
+                    _data = RorHelper(_ad.Lo);
+                    _rw = false;
+                    Adc();
                     break;
                 case (0x77 << 3) | 5:
                     FetchNextInstruction();
@@ -3634,7 +3691,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // RRA abs,Y
+                // RRA abs,Y - ROR + ADC (undocumented)
                 case (0x7B << 3) | 0:
                     Address = PC++;
                     break;
@@ -3655,7 +3712,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x7B << 3) | 5:
-                    Rra();
+                    _data = RorHelper(_ad.Lo);
+                    _rw = false;
+                    Adc();
                     break;
                 case (0x7B << 3) | 6:
                     FetchNextInstruction();
@@ -3746,7 +3805,8 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x7E << 3) | 5:
-                    Ror();
+                    _data = RorHelper(_ad.Lo);
+                    _rw = false;
                     break;
                 case (0x7E << 3) | 6:
                     FetchNextInstruction();
@@ -3755,7 +3815,7 @@ namespace Aemula.Chips.Mos6502
                     Debug.Assert(false);
                     break;
 
-                // RRA abs,X
+                // RRA abs,X - ROR + ADC (undocumented)
                 case (0x7F << 3) | 0:
                     Address = PC++;
                     break;
@@ -3776,7 +3836,9 @@ namespace Aemula.Chips.Mos6502
                     _rw = false;
                     break;
                 case (0x7F << 3) | 5:
-                    Rra();
+                    _data = RorHelper(_ad.Lo);
+                    _rw = false;
+                    Adc();
                     break;
                 case (0x7F << 3) | 6:
                     FetchNextInstruction();
