@@ -1,4 +1,6 @@
-﻿namespace Aemula.Chips.Mos6502
+﻿using System.Runtime.CompilerServices;
+
+namespace Aemula.Chips.Mos6502
 {
     public struct ProcessorFlags
     {
@@ -32,6 +34,7 @@
         /// </summary>
         public bool N;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetFromByte(byte value)
         {
             C = (value & 0x01) == 0x01;
@@ -42,6 +45,7 @@
             N = (value & 0x80) == 0x80;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public byte SetZeroNegativeFlags(byte value)
         {
             Z = value == 0;
@@ -50,6 +54,7 @@
             return value;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte AsByte(bool bit4Set)
         {
             var result = 0;

@@ -78,7 +78,7 @@ namespace Aemula.Chips.Mos6502
                     }
                     else
                     {
-                        PC += 1;
+                        PC++;
                     }
                 }
             }

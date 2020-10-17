@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Aemula
 {
@@ -14,7 +15,8 @@ namespace Aemula
         [FieldOffset(0)]
         public ushort Value;
 
-        public static SplitUInt16 operator+(SplitUInt16 lhs, byte rhs)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SplitUInt16 operator +(SplitUInt16 lhs, byte rhs)
         {
             return new SplitUInt16
             {
@@ -22,6 +24,7 @@ namespace Aemula
             };
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SplitUInt16 operator +(SplitUInt16 lhs, sbyte rhs)
         {
             return new SplitUInt16
@@ -30,6 +33,7 @@ namespace Aemula
             };
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public static SplitUInt16 operator ++(SplitUInt16 lhs)
         {
             return new SplitUInt16
@@ -38,6 +42,7 @@ namespace Aemula
             };
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator SplitUInt16(byte value)
         {
             return new SplitUInt16

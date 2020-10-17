@@ -10,6 +10,7 @@ namespace Aemula.Chips.Mos6502
         /// <summary>
         /// AND - Logical AND
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void And(in Mos6502Pins pins)
         {
             A = P.SetZeroNegativeFlags((byte)(A & pins.Data));
@@ -225,8 +226,7 @@ namespace Aemula.Chips.Mos6502
             _tr += (byte)timingRegisterIncrement;
         }
 
-
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         private void FetchNextInstruction(ref Mos6502Pins pins)
         {
             pins.Address = PC;
