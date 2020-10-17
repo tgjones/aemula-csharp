@@ -9,6 +9,10 @@
         public bool Nmi;
         public bool Sync;
         public bool Res;
+
+        /// <summary>
+        /// Read/write pin. True for read, false for write.
+        /// </summary>
         public bool RW;
     }
 }

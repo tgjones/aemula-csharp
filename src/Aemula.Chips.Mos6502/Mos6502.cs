@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using Aemula.Chips.Mos6502.UI;
 using Aemula.UI;
 
@@ -14,7 +13,6 @@ namespace Aemula.Chips.Mos6502
 
             var pins = new Mos6502Pins
             {
-                Rdy = true,
                 Sync = true,
                 Res = true,
                 RW = true
@@ -64,6 +62,12 @@ namespace Aemula.Chips.Mos6502
             if (pins.Sync | pins.Irq | pins.Nmi | pins.Rdy | pins.Res)
             {
                 // TODO: Interrupt stuff.
+
+                // Check RDY pin, but only during a read cycle.
+                if (pins.Rdy & pins.RW)
+                {
+                    return;
+                }
 
                 if (pins.Sync)
                 {

@@ -1,5 +1,4 @@
-﻿using System;
-using Aemula.Bus;
+﻿using Aemula.Chips.Mos6502;
 
 namespace Aemula.Chips.Ricoh2A03
 {
@@ -9,23 +8,13 @@ namespace Aemula.Chips.Ricoh2A03
         // https://forums.nesdev.com/viewtopic.php?f=3&t=14120
         private sealed class DmaUnit
         {
-            private readonly IBus<ushort, byte> _bus;
-            private readonly Mos6502.Mos6502 _cpu;
-
-            public DmaUnit(IBus<ushort, byte> bus, Mos6502.Mos6502 cpu)
-            {
-                _bus = bus;
-                _cpu = cpu;
-            }
-
             public DmaState DmaState;
 
             private bool _isDmaReadCycle;
             private byte _dmaHiByte;
             private byte _dmaLoByte;
-            private byte _dmaValue;
 
-            public void Cycle()
+            public void Cycle(ref Mos6502Pins pins)
             {
                 // DMA transfer can only become active on a read cycle.
                 if (DmaState == DmaState.Pending && _isDmaReadCycle)
@@ -41,7 +30,8 @@ namespace Aemula.Chips.Ricoh2A03
                     // Only do a read if a DMA transfer is actually active.
                     if (DmaState == DmaState.Active)
                     {
-                        _dmaValue = _bus.Read((ushort)((_dmaHiByte << 8) | _dmaLoByte));
+                        pins.Address = new SplitUInt16 { Value = (ushort)((_dmaHiByte << 8) | _dmaLoByte) };
+                        pins.RW = true;
                     }
                     _isDmaReadCycle = false;
                 }
@@ -50,7 +40,8 @@ namespace Aemula.Chips.Ricoh2A03
                     // Only do a write if a DMA transfer is actually active.
                     if (DmaState == DmaState.Active)
                     {
-                        _bus.Write(0x2004, _dmaValue);
+                        pins.Address = new SplitUInt16 { Value = 0x2004 };
+                        pins.RW = false;
 
                         // Check if we have finished the DMA transfer.
                         if (_dmaLoByte == 0xFF)
@@ -58,8 +49,7 @@ namespace Aemula.Chips.Ricoh2A03
                             DmaState = DmaState.Inactive;
 
                             // Let CPU continue on next clock cycle.
-                            throw new NotImplementedException();
-                            //_cpu.Rdy = true;
+                            pins.Rdy = false;
                         }
                         else
                         {

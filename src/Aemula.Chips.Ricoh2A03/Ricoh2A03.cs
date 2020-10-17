@@ -1,95 +1,95 @@
-﻿//using System.Collections.Generic;
-//using Aemula.Bus;
-//using Aemula.Clock;
-//using Aemula.UI;
+﻿using System.Collections.Generic;
+using Aemula.Chips.Mos6502;
+using Aemula.UI;
 
-//namespace Aemula.Chips.Ricoh2A03
-//{
-//    public sealed partial class Ricoh2A03 : IClockable
-//    {
-//        private const ushort OamDmaAddress = 0x4014;
-//        private readonly DmaUnit _dmaUnit;
+namespace Aemula.Chips.Ricoh2A03
+{
+    public sealed partial class Ricoh2A03
+    {
+        public static (Ricoh2A03, Mos6502Pins) Create()
+        {
+            var (mos6502, pins) = Mos6502.Mos6502.Create(Mos6502Options.Default);
 
-//        public Mos6502.Mos6502 CpuCore { get; }
+            var ricoh2A03 = new Ricoh2A03(mos6502);
 
-//        public Ricoh2A03(IBus<ushort, byte> bus)
-//        {
-//            var wrappedBus = new WrappedBus<ushort, byte>(
-//                bus,
-//                address => address >= 0x4000 & address <= 0x401F,
-//                Read,
-//                Write);
+            return (ricoh2A03, pins);
+        }
 
-//            CpuCore = new Mos6502.Mos6502(wrappedBus);
+        private const ushort OamDmaAddress = 0x4014;
+        private readonly DmaUnit _dmaUnit;
 
-//            _dmaUnit = new DmaUnit(bus, CpuCore);
-//        }
+        public readonly Mos6502.Mos6502 CpuCore;
 
-//        public void Cycle()
-//        {
-//            // TODO: APU stuff.
+        private Ricoh2A03(Mos6502.Mos6502 cpuCore)
+        {
+            CpuCore = cpuCore;
 
-//            _dmaUnit.Cycle();
+            _dmaUnit = new DmaUnit();
+        }
 
-//            if (_dmaUnit.DmaState != DmaState.Inactive)
-//            {
-//                return;
-//            }
+        public void Cycle(ref Mos6502Pins pins)
+        {
+            // TODO: APU stuff.
 
-//            var cycleResult = CpuCore.Cycle();
+            _dmaUnit.Cycle(ref pins);
 
-//            // Did CPU become paused on this cycle? If so it means we previously requested it
-//            // to pause so that we can start a DMA transfer.
-//            if (cycleResult == Mos6502.Mos6502CycleResult.Paused)
-//            {
-//                _dmaUnit.DmaState = DmaState.Pending;
-//            }
-//        }
+            if (_dmaUnit.DmaState != DmaState.Inactive)
+            {
+                return;
+            }
 
-//        private byte Read(ushort address)
-//        {
-//            switch (address)
-//            {
-//                case OamDmaAddress: // Write-only
-//                    return 0;
+            CpuCore.Tick(ref pins);
 
-//                default:
-//                    // TODO
-//                    return 0;
-//                    //throw new ArgumentOutOfRangeException(nameof(address));
-//            }
-//        }
+            var address = pins.Address.Value;
 
-//        private void Write(ushort address, byte data)
-//        {
-//            switch (address)
-//            {
-//                case OamDmaAddress:
-//                    _dmaUnit.SetHiByte(data);
+            // Is the address in the DMA range?
+            if (address >= 0x4000 && address <= 0x401F)
+            {
+                if (pins.RW)
+                {
+                    pins.Data = address switch
+                    {
+                        // Write-only
+                        OamDmaAddress => 0,
 
-//                    // Tell CPU we want to pause it at the next read cycle.
-//                    CpuCore.Rdy = false;
+                        // TODO
+                        _ => 0
+                    };
+                }
+                else
+                {
+                    switch (address)
+                    {
+                        case OamDmaAddress:
+                            _dmaUnit.SetHiByte(pins.Data);
 
-//                    break;
+                            // Tell CPU we want to pause it at the next read cycle.
+                            pins.Rdy = true;
 
-//                default:
-//                    // TODO
-//                    //throw new ArgumentOutOfRangeException(nameof(address));
-//                    break;
-//            }
-//        }
+                            break;
 
-//        public void Reset()
-//        {
-//            CpuCore.Reset();
-//        }
+                        default:
+                            // TODO
+                            //throw new ArgumentOutOfRangeException(nameof(address));
+                            break;
+                    }
+                }
+            }
 
-//        public IEnumerable<DebuggerWindow> CreateDebuggerWindows()
-//        {
-//            foreach (var debuggerWindow in CpuCore.CreateDebuggerWindows())
-//            {
-//                yield return debuggerWindow;
-//            }
-//        }
-//    }
-//}
+            // Did CPU become paused on this cycle? If so it means we previously requested it
+            // to pause so that we can start a DMA transfer.
+            if (pins.RW && pins.Rdy)
+            {
+                _dmaUnit.DmaState = DmaState.Pending;
+            }
+        }
+
+        public IEnumerable<DebuggerWindow> CreateDebuggerWindows()
+        {
+            foreach (var debuggerWindow in CpuCore.CreateDebuggerWindows())
+            {
+                yield return debuggerWindow;
+            }
+        }
+    }
+}
