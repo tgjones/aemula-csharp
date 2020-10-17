@@ -1,60 +1,55 @@
 ﻿namespace Aemula.Chips.INS8154
 {
-    public sealed class INS8154
+    public struct Ins8154Pins
     {
-        private readonly byte[] _ram = new byte[128];
-
-        [Pin(PinDirection.In)]
-        private byte _address;
-
-        [Pin(PinDirection.Bidirectional)]
-        private byte _data;
+        public byte Address;
+        public byte Data;
 
         /// <summary>
         /// Chip Select 0. Must be low to select the chip.
         /// </summary>
-        [Pin(PinDirection.In)]
-        private bool _cs0;
+        public bool CS0;
 
         /// <summary>
         /// Chip Select 1. Must be high to select the chip.
         /// </summary>
-        [Pin(PinDirection.In)]
-        private bool _cs1;
+        public bool CS1;
+
+        internal bool IsChipActive() => !CS0 && CS1;
 
         /// <summary>
         /// Read strobe.
         /// </summary>
-        [Pin(PinDirection.In)]
-        [Handle(ChangeType.TransitionedHiToLo)]
-        private bool _nrds = true;
+        public bool Nrds; // TODO: Default to true
 
         /// <summary>
         /// Write strobe.
         /// </summary>
-        [Pin(PinDirection.In)]
-        private bool _nwds = true;
+        public bool Nwds; // TODO: Default to true
+    }
 
-        private bool IsChipActive() => !_cs0 && _cs1;
+    public sealed class INS8154
+    {
+        private readonly byte[] _ram = new byte[128];
 
-        private void OnNrdsTransitionedHiToLo()
-        {
-            if (!IsChipActive())
-            {
-                return;
-            }
+        //private void OnNrdsTransitionedHiToLo()
+        //{
+        //    if (!IsChipActive())
+        //    {
+        //        return;
+        //    }
 
-            _data = _ram[_address];
-        }
+        //    _data = _ram[_address];
+        //}
 
-        private void OnNwdsTransitionedHiToLo()
-        {
-            if (!IsChipActive())
-            {
-                return;
-            }
+        //private void OnNwdsTransitionedHiToLo()
+        //{
+        //    if (!IsChipActive())
+        //    {
+        //        return;
+        //    }
 
-            _ram[_address] = _data;
-        }
+        //    _ram[_address] = _data;
+        //}
     }
 }

@@ -31,8 +31,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula", "Aemula\Aemula.csp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Consoles.Nes", "Aemula.Consoles.Nes\Aemula.Consoles.Nes.csproj", "{34A133F9-1AFB-4538-8D0C-8962C71B293E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Chips.Mos6502.Generators", "Aemula.Chips.Mos6502.Generators\Aemula.Chips.Mos6502.Generators.csproj", "{EA6C1B45-5EB4-4965-8D84-8C59CB0C4BCE}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Chips", "Aemula.Chips\Aemula.Chips.csproj", "{B1B56F11-4A99-4AF1-80CB-C7458A27A5A5}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Systems", "Aemula.Systems\Aemula.Systems.csproj", "{9B4B12B7-CF16-4976-B434-5CC3CAD5FE8E}"
@@ -101,10 +99,6 @@ Global
 		{34A133F9-1AFB-4538-8D0C-8962C71B293E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{34A133F9-1AFB-4538-8D0C-8962C71B293E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{34A133F9-1AFB-4538-8D0C-8962C71B293E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EA6C1B45-5EB4-4965-8D84-8C59CB0C4BCE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EA6C1B45-5EB4-4965-8D84-8C59CB0C4BCE}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EA6C1B45-5EB4-4965-8D84-8C59CB0C4BCE}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EA6C1B45-5EB4-4965-8D84-8C59CB0C4BCE}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B1B56F11-4A99-4AF1-80CB-C7458A27A5A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B1B56F11-4A99-4AF1-80CB-C7458A27A5A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B1B56F11-4A99-4AF1-80CB-C7458A27A5A5}.Release|Any CPU.ActiveCfg = Release|Any CPU

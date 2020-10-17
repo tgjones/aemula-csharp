@@ -10,8 +10,4 @@
 		<ProjectReference Include="..\Aemula\Aemula.csproj" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\Aemula.Chips.Mos6502.Generators\Aemula.Chips.Mos6502.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-	</ItemGroup>
-
 </Project>
