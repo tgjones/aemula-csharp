@@ -1,7 +1,6 @@
 ﻿using System.Numerics;
 using Aemula.UI;
 using ImGuiNET;
-using Veldrid;
 
 namespace Aemula.Chips.Ricoh2C02.UI
 {

@@ -1,101 +1,187 @@
-﻿//using System.Collections.Generic;
-//using Aemula.Bus;
-//using Aemula.Chips.Ricoh2A03;
-//using Aemula.Chips.Ricoh2C02;
-//using Aemula.Memory;
-//using Aemula.UI;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using Aemula.Bus;
+using Aemula.Chips.Mos6502;
+using Aemula.Chips.Ricoh2A03;
+using Aemula.Chips.Ricoh2C02;
+using Aemula.Consoles.Nes.UI;
+using Aemula.UI;
 
-//namespace Aemula.Consoles.Nes
-//{
-//    public sealed class Nes : EmulatedSystem
-//    {
-//        public readonly Clock.Clock Clock;
+namespace Aemula.Consoles.Nes
+{
+    public sealed class Nes : EmulatedSystem
+    {
+        private const int CpuFrequency = 1789773;
+        //private const int CpuFrequency = 20;
+        private static readonly TimeSpan TimePerCpuTick = TimeSpan.FromSeconds(1.0f / CpuFrequency);
 
-//        public readonly Bus<ushort, byte> CpuBus;
-//        public readonly Ricoh2A03 Cpu;
+        private readonly byte[] _ram;
+        private readonly byte[] _vram;
 
-//        public readonly Bus<ushort, byte> PpuBus;
-//        public readonly Ricoh2C02 Ppu;
+        private Mos6502Pins _cpuPins;
+        private Ricoh2C02Pins _ppuPins;
 
-//        public readonly Ram<ushort, byte> Ram;
-//        public readonly Ram<ushort, byte> VRam;
+        private TimeSpan _nextUpdateTime = TimeSpan.Zero;
 
-//        public Nes()
-//        {
-//            Clock = new Clock.Clock(21477272);
+        private Cartridge _cartridge;
 
-//            CpuBus = new Bus<ushort, byte>();
-//            Cpu = new Ricoh2A03(CpuBus);
+        public readonly Ricoh2A03 Cpu;
 
-//            PpuBus = new Bus<ushort, byte>();
-//            Ppu = new Ricoh2C02(PpuBus);
+        public readonly Bus<ushort, byte> PpuBus;
+        public readonly Ricoh2C02 Ppu;
 
-//            Ram = new Ram<ushort, byte>(0x0800);
+        public Nes()
+        {
+            (Cpu, _cpuPins) = Ricoh2A03.Create();
 
-//            VRam = new Ram<ushort, byte>(0x0800);
+            PpuBus = new Bus<ushort, byte>();
+            Ppu = new Ricoh2C02();
 
-//            Clock = new Clock.Clock(
-//                21477272,
-//                new Clock.ClockableDevice(Cpu, 12),
-//                new Clock.ClockableDevice(Ppu, 4));
-//        }
+            _ram = new byte[0x0800];
+            _vram = new byte[0x0800];
+        }
 
-//        public void InsertCartridge(Cartridge cartridge)
-//        {
-//            CpuBus.Clear();
-//            PpuBus.Clear();
+        public void Update(TimeSpan time)
+        {
+            if (_nextUpdateTime == TimeSpan.Zero)
+            {
+                _nextUpdateTime = time;
+            }
 
-//            void ConfigureCpuBus()
-//            {
-//                // 2KB RAM, mirrored 3 times.
-//                CpuBus.Map(0x0000, 0x1FFF, Ram, 0x7FF);
+            while (time > _nextUpdateTime)
+            {
+                Tick();
+                _nextUpdateTime += TimePerCpuTick;
+            }
+        }
 
-//                // PPU, mirrored 1023 times.
-//                CpuBus.Map(0x2000, 0x3FFF, Ppu, 0x7);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Tick()
+        {
+            DoCpuCycle();
 
-//                // $4000-$401F is mapped internally on 2A03 chip.
+            for (var i = 0; i < 3; i++)
+            {
+                DoPpuCycle();
+            }
+        }
 
-//                // TODO: Mapper implementations.
-//                // What follows is NROM-128, mapper 0.
+        private void DoCpuCycle()
+        {
+            Cpu.Cycle(ref _cpuPins);
 
-//                CpuBus.Map(0x8000, 0xFFFF, new Rom<ushort, byte>(cartridge.PrgRom), 0x3FFF);
-//            }
+            //if (_cpuPins.Sync)
+            //{
+            //    var cpu = Cpu.CpuCore;
+            //    var cycles = 0;
+            //    Debug.WriteLine($"{cpu.PC.Value:X4}  A:{cpu.A:X2} X:{cpu.X:X2} Y:{cpu.Y:X2} P:{cpu.P.AsByte(false):X2} SP:{cpu.SP:X2} CPUC:{cycles - 7}");
+            //}
 
-//            void ConfigurePpuBus()
-//            {
-//                PpuBus.Map(0x0000, 0x1FFF, new Rom<ushort, byte>(cartridge.ChrRom));
+            var address = _cpuPins.Address.Value;
 
-//                // VRAM.
-//                PpuBus.Map(0x2000, 0x3EFF, VRam, 0x7FF);
+            // The 3 high bits dictate which chips are selected.
+            var a13_a15 = address >> 13;
 
-//                // $3F00-$3FFF is mapped internally in the PPU.
-//            }
+            switch (a13_a15)
+            {
+                case 0b000: // Internal RAM. Only address pins A0..A10 are connected.
+                    if (_cpuPins.RW)
+                    {
+                        _cpuPins.Data = _ram[address & 0x7FF];
+                    }
+                    else
+                    {
+                        _ram[address & 0x7FF] = _cpuPins.Data;
+                    }
+                    break;
 
-//            ConfigureCpuBus();
-//            ConfigurePpuBus();
-//        }
+                case 0b001: // PPU ports. Only address pins A0..A2 are connected.
+                    _ppuPins.CpuRW = _cpuPins.RW;
+                    _ppuPins.CpuAddress = (byte)(address & 0x7);
+                    _ppuPins.CpuData = _cpuPins.Data;
+                    Ppu.CpuCycle(ref _ppuPins);
 
-//        public override void Reset()
-//        {
-//            Cpu.Reset();
-//        }
+                    // Now handle reads / writes on PPU data bus.
+                    var pa13 = (_ppuPins.PpuAddress >> 13) & 1;
+                    if (_ppuPins.PpuRW)
+                    {
+                        if (pa13 == 1)
+                        {
+                            _ppuPins.PpuData = _vram[_ppuPins.PpuAddress & 0x7FF];
+                        }
+                        else
+                        {
+                            // TODO: Use mapper.
+                            _ppuPins.PpuData = _cartridge?.ChrRom[_ppuPins.PpuAddress] ?? 0;
+                        }
+                    }
+                    else
+                    {
+                        if (pa13 == 1)
+                        {
+                            _vram[_ppuPins.PpuAddress & 0x7FF] = _ppuPins.PpuData;
+                        }
+                        else
+                        {
+                            // Can't write to CHR ROM, maybe?
+                        }
+                    }
 
-//        public override IEnumerable<DebuggerWindow> CreateDebuggerWindows()
-//        {
-//            foreach (var debuggerWindow in Clock.CreateDebuggerWindows())
-//            {
-//                yield return debuggerWindow;
-//            }
+                    break;
 
-//            foreach (var debuggerWindow in Cpu.CreateDebuggerWindows())
-//            {
-//                yield return debuggerWindow;
-//            }
+                // $4000-$401F is mapped internally on 2A03 chip.
 
-//            foreach (var debuggerWindow in Ppu.CreateDebuggerWindows())
-//            {
-//                yield return debuggerWindow;
-//            }
-//        }
-//    }
-//}
+                case 0b100: // ROMSEL. Only address pins A0..A14 are connected.
+                case 0b101:
+                case 0b110:
+                case 0b111:
+                    // This is ROM - can't write to it.
+                    if (_cpuPins.RW)
+                    {
+                        // TODO: Mapper implementations.
+                        // What follows is NROM-128, mapper 0.
+                        _cpuPins.Data = _cartridge?.PrgRom[address & 0x3FFF] ?? 0;
+                    }
+                    break;
+            }
+        }
+
+        private void DoPpuCycle()
+        {
+
+        }
+
+        public void InsertCartridge(Cartridge cartridge)
+        {
+            _cartridge = cartridge;
+        }
+
+        public override void Reset()
+        {
+            _cpuPins.Res = true;
+        }
+
+        internal byte ReadChrRom(ushort address)
+        {
+            // TODO: Use mapper.
+            return _cartridge?.ChrRom[address] ?? 0;
+        }
+
+        public override IEnumerable<DebuggerWindow> CreateDebuggerWindows()
+        {
+            foreach (var debuggerWindow in Cpu.CreateDebuggerWindows())
+            {
+                yield return debuggerWindow;
+            }
+
+            foreach (var debuggerWindow in Ppu.CreateDebuggerWindows())
+            {
+                yield return debuggerWindow;
+            }
+
+            yield return new PatternTableWindow(this);
+        }
+    }
+}

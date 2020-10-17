@@ -54,7 +54,6 @@ namespace Aemula.Chips.Mos6502
         private Mos6502(Mos6502Options options)
         {
             _bcdEnabled = options.BcdEnabled;
-            _brkFlags = BrkFlags.Reset;
         }
 
         public void Tick(ref Mos6502Pins pins)
@@ -74,6 +73,11 @@ namespace Aemula.Chips.Mos6502
                     _ir = pins.Data;
                     _tr = 0;
                     pins.Sync = false;
+
+                    if (pins.Res)
+                    {
+                        _brkFlags = BrkFlags.Reset;
+                    }
 
                     if (_brkFlags != BrkFlags.None)
                     {

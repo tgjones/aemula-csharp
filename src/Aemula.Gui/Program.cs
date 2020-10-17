@@ -42,37 +42,35 @@ namespace Aemula.Gui
 
             var lastTime = stopwatch.Elapsed;
 
-            //var nesEmulator = new NesEmulator();
+            var nesEmulator = new NesEmulator();
 
-            //nesEmulator.Initialize(graphicsDevice, imGuiRenderer);
+            nesEmulator.Initialize(graphicsDevice, imGuiRenderer);
 
-            //while (windowOpen)
-            //{
-            //    var deltaTimeSpan = stopwatch.Elapsed - lastTime;
-            //    lastTime = stopwatch.Elapsed;
+            while (windowOpen)
+            {
+                var deltaTimeSpan = stopwatch.Elapsed - lastTime;
+                lastTime = stopwatch.Elapsed;
 
-            //    var deltaTime = (float)deltaTimeSpan.TotalSeconds;
-            //    imGuiRenderer.Update(deltaTime, window.PumpEvents());
+                var deltaTime = (float)deltaTimeSpan.TotalSeconds;
+                imGuiRenderer.Update(deltaTime, window.PumpEvents());
 
-            //    var emulatorTime = new EmulatorTime(stopwatch.Elapsed, deltaTimeSpan);
+                var emulatorTime = new EmulatorTime(stopwatch.Elapsed, deltaTimeSpan);
 
-            //    nesEmulator.Update(emulatorTime);
+                nesEmulator.Update(emulatorTime);
 
-            //    nesEmulator.Draw(emulatorTime);
+                nesEmulator.Draw(emulatorTime);
 
-            //    commandList.Begin();
-            //    commandList.SetFramebuffer(graphicsDevice.SwapchainFramebuffer);
-            //    commandList.ClearColorTarget(0, RgbaFloat.Clear);
+                commandList.Begin();
+                commandList.SetFramebuffer(graphicsDevice.SwapchainFramebuffer);
+                commandList.ClearColorTarget(0, RgbaFloat.Clear);
 
-            //    imGuiRenderer.Render(graphicsDevice, commandList);
+                imGuiRenderer.Render(graphicsDevice, commandList);
 
-            //    commandList.End();
+                commandList.End();
 
-            //    graphicsDevice.SubmitCommands(commandList);
-            //    graphicsDevice.SwapBuffers();
-
-                
-            //}
+                graphicsDevice.SubmitCommands(commandList);
+                graphicsDevice.SwapBuffers();
+            }
 
             stopwatch.Stop();
 
@@ -81,72 +79,72 @@ namespace Aemula.Gui
             graphicsDevice.Dispose();
         }
 
-        //private sealed class NesEmulator
-        //{
-        //    private readonly Nes _nes;
-        //    private readonly DebuggerWindow[] _debuggerWindows;
+        private sealed class NesEmulator
+        {
+            private readonly Nes _nes;
+            private readonly DebuggerWindow[] _debuggerWindows;
 
-        //    public NesEmulator()
-        //    {
-        //        _nes = new Nes();
-        //        _nes.Reset();
+            public NesEmulator()
+            {
+                _nes = new Nes();
+                _nes.Reset();
 
-        //        _debuggerWindows = _nes.CreateDebuggerWindows().ToArray();
-        //    }
+                _debuggerWindows = _nes.CreateDebuggerWindows().ToArray();
+            }
 
-        //    public void Initialize(GraphicsDevice graphicsDevice, ImGuiRenderer renderer)
-        //    {
-        //        foreach (var debuggerWindow in _debuggerWindows)
-        //        {
-        //            debuggerWindow.CreateGraphicsResources(graphicsDevice, renderer);
-        //        }
-        //    }
+            public void Initialize(GraphicsDevice graphicsDevice, ImGuiRenderer renderer)
+            {
+                foreach (var debuggerWindow in _debuggerWindows)
+                {
+                    debuggerWindow.CreateGraphicsResources(graphicsDevice, renderer);
+                }
+            }
 
-        //    public void Update(EmulatorTime time)
-        //    {
-        //        _nes.Clock.Update(time);
-        //    }
+            public void Update(EmulatorTime time)
+            {
+                _nes.Update(time.TotalTime);
+            }
 
-        //    public void Draw(EmulatorTime time)
-        //    {
-        //        if (ImGui.BeginMainMenuBar())
-        //        {
-        //            if (ImGui.BeginMenu("File"))
-        //            {
-        //                if (ImGui.MenuItem("Open .nes..."))
-        //                {
-        //                    // TODO
-        //                    var cartridge = Cartridge.FromFile(@"C:\CodePersonal\Aemula\src\Aemula.Chips.Mos6502.Tests\Assets\nestest.nes");
-        //                    _nes.InsertCartridge(cartridge);
-        //                    _nes.Reset();
-        //                }
+            public void Draw(EmulatorTime time)
+            {
+                if (ImGui.BeginMainMenuBar())
+                {
+                    if (ImGui.BeginMenu("File"))
+                    {
+                        if (ImGui.MenuItem("Open .nes..."))
+                        {
+                            // TODO
+                            var cartridge = Cartridge.FromFile(@"C:\CodePersonal\Aemula\src\Aemula.Chips.Mos6502.Tests\Assets\nestest.nes");
+                            _nes.InsertCartridge(cartridge);
+                            _nes.Reset();
+                        }
 
-        //                ImGui.EndMenu();
-        //            }
+                        ImGui.EndMenu();
+                    }
 
-        //            if (ImGui.BeginMenu("Windows"))
-        //            {
-        //                foreach (var debuggerWindow in _debuggerWindows)
-        //                {
-        //                    if (ImGui.MenuItem(debuggerWindow.DisplayName, null, debuggerWindow.IsVisible, true))
-        //                    {
-        //                        debuggerWindow.IsVisible = true;
+                    if (ImGui.BeginMenu("Windows"))
+                    {
+                        foreach (var debuggerWindow in _debuggerWindows)
+                        {
+                            if (ImGui.MenuItem(debuggerWindow.DisplayName, null, debuggerWindow.IsVisible, true))
+                            {
+                                debuggerWindow.IsVisible = true;
 
-        //                        ImGui.SetWindowFocus(debuggerWindow.Name);
-        //                    }
-        //                }
+                                ImGui.SetWindowFocus(debuggerWindow.Name);
+                            }
+                        }
 
-        //                ImGui.EndMenu();
-        //            }
+                        ImGui.EndMenu();
+                    }
 
-        //            ImGui.EndMainMenuBar();
-        //        }
+                    ImGui.EndMainMenuBar();
+                }
 
-        //        foreach (var debuggerWindow in _debuggerWindows)
-        //        {
-        //            debuggerWindow.Draw(time);
-        //        }
-        //    }
-        //}
+                foreach (var debuggerWindow in _debuggerWindows)
+                {
+                    debuggerWindow.Draw(time);
+                }
+            }
+        }
     }
 }

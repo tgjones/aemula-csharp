@@ -4,7 +4,7 @@ using Aemula.UI;
 using ImGuiNET;
 using Veldrid;
 
-namespace Aemula.Chips.Ricoh2C02.UI
+namespace Aemula.Consoles.Nes.UI
 {
     internal sealed class PatternTableWindow : DebuggerWindow
     {
@@ -13,7 +13,7 @@ namespace Aemula.Chips.Ricoh2C02.UI
 
         private static readonly TimeSpan TextureUpdateInterval = TimeSpan.FromMilliseconds(200);
 
-        private readonly Ricoh2C02 _ricoh2C02;
+        private readonly Nes _nes;
 
         private readonly RgbaByte[] _pixelData0;
         private readonly RgbaByte[] _pixelData1;
@@ -27,9 +27,9 @@ namespace Aemula.Chips.Ricoh2C02.UI
 
         public override string DisplayName => "NES PPU Pattern Table";
 
-        public PatternTableWindow(Ricoh2C02 ricoh2C02)
+        public PatternTableWindow(Nes nes)
         {
-            _ricoh2C02 = ricoh2C02;
+            _nes = nes;
 
             _pixelData0 = new RgbaByte[PatternTableSize * PatternTableSize];
             _pixelData1 = new RgbaByte[PatternTableSize * PatternTableSize];
@@ -95,8 +95,8 @@ namespace Aemula.Chips.Ricoh2C02.UI
                     var addressPlane0 = (ushort)(baseAddress);
                     var addressPlane1 = (ushort)(baseAddress + 8);
 
-                    var dataPlane0 = _ricoh2C02.PpuBus.Read(addressPlane0);
-                    var dataPlane1 = _ricoh2C02.PpuBus.Read(addressPlane1);
+                    var dataPlane0 = _nes.ReadChrRom(addressPlane0);
+                    var dataPlane1 = _nes.ReadChrRom(addressPlane1);
 
                     for (var column = 0; column < 8; column++)
                     {

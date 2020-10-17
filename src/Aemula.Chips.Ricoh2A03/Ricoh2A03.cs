@@ -42,7 +42,6 @@ namespace Aemula.Chips.Ricoh2A03
 
             var address = pins.Address.Value;
 
-            // Is the address in the DMA range?
             if (address >= 0x4000 && address <= 0x401F)
             {
                 if (pins.RW)
@@ -52,7 +51,7 @@ namespace Aemula.Chips.Ricoh2A03
                         // Write-only
                         OamDmaAddress => 0,
 
-                        // TODO
+                        // TODO: sound generation and joystick.
                         _ => 0
                     };
                 }
@@ -69,8 +68,7 @@ namespace Aemula.Chips.Ricoh2A03
                             break;
 
                         default:
-                            // TODO
-                            //throw new ArgumentOutOfRangeException(nameof(address));
+                            // TODO: sound generation and joystick.
                             break;
                     }
                 }

@@ -1,26 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
-using Aemula.Bus;
 using Aemula.Chips.Ricoh2C02.UI;
-using Aemula.Clock;
-using Aemula.Memory;
 using Aemula.UI;
 
 namespace Aemula.Chips.Ricoh2C02
 {
     // https://wiki.nesdev.com/w/index.php/PPU_registers
-    public sealed partial class Ricoh2C02 : MemoryDevice<ushort, byte>, IClockable
+    public sealed partial class Ricoh2C02
     {
-        private const ushort PpuCtrlAddress = 0x0;
-        private const ushort PpuMaskAddress = 0x1;
-        private const ushort PpuStatusAddress = 0x2;
-        private const ushort OamAddrAddress = 0x3;
-        private const ushort OamDataAddress = 0x4;
-        private const ushort PpuScrollAddress = 0x5;
-        private const ushort PpuAddrAddress = 0x6;
-        private const ushort PpuDataAddress = 0x7;
-
-        private readonly IBus<ushort, byte> _ppuBus;
+        private const byte PpuCtrlAddress = 0x0;
+        private const byte PpuMaskAddress = 0x1;
+        private const byte PpuStatusAddress = 0x2;
+        private const byte OamAddrAddress = 0x3;
+        private const byte OamDataAddress = 0x4;
+        private const byte PpuScrollAddress = 0x5;
+        private const byte PpuAddrAddress = 0x6;
+        private const byte PpuDataAddress = 0x7;
 
         private readonly byte[] _objectAttributeMemory;
         private byte _oamAddress;
@@ -33,7 +28,6 @@ namespace Aemula.Chips.Ricoh2C02
 
         private ushort _ppuAddress;
 
-        private byte _ppuDataReadBuffer;
         private byte _currentLatchData;
 
         // Registers
@@ -44,13 +38,9 @@ namespace Aemula.Chips.Ricoh2C02
         // Latch around two-bytes writes into 0x2005 and 0x2006
         private bool _firstWrite = true;
 
-        public IBus<ushort, byte> PpuBus => _ppuBus;
-
-        public Ricoh2C02(IBus<ushort, byte> ppuBus)
-            : base(8)
+        public Ricoh2C02()
         {
             _objectAttributeMemory = new byte[256];
-            _ppuBus = ppuBus;
 
             _systemPalette = new[]
             {
@@ -131,115 +121,117 @@ namespace Aemula.Chips.Ricoh2C02
             // TODO
         }
 
-        public override byte Read(ushort address)
+        public void CpuCycle(ref Ricoh2C02Pins pins)
         {
-            var result = _currentLatchData;
-
-            switch (address)
+            if (pins.CpuRW)
             {
-                case PpuCtrlAddress: // Write-only
-                    break;
+                var result = _currentLatchData;
 
-                case PpuMaskAddress: // Write-only
-                    break;
+                switch (pins.CpuAddress)
+                {
+                    case PpuCtrlAddress: // Write-only
+                        break;
 
-                case PpuStatusAddress:
-                    _ppuStatusRegister.VBlankStarted = true; // HACK: Remove this.
-                    _ppuStatusRegister.Unused = _currentLatchData;
-                    result = _ppuStatusRegister.Data.Value;
-                    _ppuStatusRegister.VBlankStarted = false;
-                    _firstWrite = true;
-                    break;
+                    case PpuMaskAddress: // Write-only
+                        break;
 
-                case OamAddrAddress: // Write-only
-                    break;
+                    case PpuStatusAddress:
+                        _ppuStatusRegister.VBlankStarted = true; // HACK: Remove this.
+                        _ppuStatusRegister.Unused = _currentLatchData;
+                        result = _ppuStatusRegister.Data.Value;
+                        _ppuStatusRegister.VBlankStarted = false;
+                        _firstWrite = true;
+                        break;
 
-                case OamDataAddress:
-                    result = _objectAttributeMemory[_oamAddress];
-                    break;
+                    case OamAddrAddress: // Write-only
+                        break;
 
-                case PpuScrollAddress: // Write-only
-                    break;
+                    case OamDataAddress:
+                        result = _objectAttributeMemory[_oamAddress];
+                        break;
 
-                case PpuAddrAddress: // Write-only
-                    break;
+                    case PpuScrollAddress: // Write-only
+                        break;
 
-                case PpuDataAddress:
-                    result = PpuRead(_ppuAddress);
-                    IncrementPpuAddress();
-                    break;
+                    case PpuAddrAddress: // Write-only
+                        break;
 
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(address));
+                    case PpuDataAddress:
+                        result = PpuRead(_ppuAddress, ref pins);
+                        IncrementPpuAddress();
+                        break;
+
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                _currentLatchData = result;
+
+                pins.CpuData = result;
             }
-
-            _currentLatchData = result;
-
-            return result;
-        }
-
-        public override void Write(ushort address, byte data)
-        {
-            _currentLatchData = data;
-
-            switch (address)
+            else
             {
-                case PpuCtrlAddress:
-                    _ppuCtrlRegister.Data.Value = data;
-                    // TODO: If we're in vblank, and _ppuStatusRegister.VBlankStarted is set, changing NMI flag from 0 to 1 should trigger NMI.
-                    break;
+                _currentLatchData = pins.CpuData;
 
-                case PpuMaskAddress:
-                    _ppuMaskRegister.Data.Value = data;
-                    break;
+                switch (pins.CpuAddress)
+                {
+                    case PpuCtrlAddress:
+                        _ppuCtrlRegister.Data.Value = pins.CpuData;
+                        // TODO: If we're in vblank, and _ppuStatusRegister.VBlankStarted is set, changing NMI flag from 0 to 1 should trigger NMI.
+                        break;
 
-                case PpuStatusAddress: // Read-only
-                    break;
+                    case PpuMaskAddress:
+                        _ppuMaskRegister.Data.Value = pins.CpuData;
+                        break;
 
-                case OamAddrAddress:
-                    _oamAddress = data;
-                    break;
+                    case PpuStatusAddress: // Read-only
+                        break;
 
-                case OamDataAddress:
-                    _objectAttributeMemory[_oamAddress] = data;
-                    _oamAddress++;
-                    break;
+                    case OamAddrAddress:
+                        _oamAddress = pins.CpuData;
+                        break;
 
-                case PpuScrollAddress:
-                    if (_firstWrite)
-                    {
-                        _ppuScrollPositionX = data;
-                        _firstWrite = false;
-                    }
-                    else
-                    {
-                        _ppuScrollPositionY = data;
-                        _firstWrite = true;
-                    }
-                    break;
+                    case OamDataAddress:
+                        _objectAttributeMemory[_oamAddress] = pins.CpuData;
+                        _oamAddress++;
+                        break;
 
-                case PpuAddrAddress:
-                    if (_firstWrite)
-                    {
-                        // Write high byte.
-                        _ppuAddress = (ushort)((data << 8) | (_ppuAddress & 0xFF));
-                        _firstWrite = false;
-                    }
-                    else
-                    {
-                        // Write low byte.
-                        _ppuAddress = (ushort)((_ppuAddress & 0xFF00) | data);
-                        _firstWrite = true;
-                    }
-                    break;
+                    case PpuScrollAddress:
+                        if (_firstWrite)
+                        {
+                            _ppuScrollPositionX = pins.CpuData;
+                            _firstWrite = false;
+                        }
+                        else
+                        {
+                            _ppuScrollPositionY = pins.CpuData;
+                            _firstWrite = true;
+                        }
+                        break;
 
-                case PpuDataAddress:
-                    PpuWrite(_ppuAddress, data);
-                    IncrementPpuAddress();
-                    break;
+                    case PpuAddrAddress:
+                        if (_firstWrite)
+                        {
+                            // Write high byte.
+                            _ppuAddress = (ushort)((pins.CpuData << 8) | (_ppuAddress & 0xFF));
+                            _firstWrite = false;
+                        }
+                        else
+                        {
+                            // Write low byte.
+                            _ppuAddress = (ushort)((_ppuAddress & 0xFF00) | pins.CpuData);
+                            _firstWrite = true;
+                        }
+                        break;
 
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(address));
+                    case PpuDataAddress:
+                        PpuWrite(_ppuAddress, pins.CpuData, ref pins);
+                        IncrementPpuAddress();
+                        break;
+
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
             }
         }
 
@@ -255,36 +247,46 @@ namespace Aemula.Chips.Ricoh2C02
             }
         }
 
-        private byte PpuRead(ushort address)
+        private byte ReadPaletteMemory(ushort address)
         {
-            var result = _ppuDataReadBuffer;
+            if (_ppuMaskRegister.Grayscale)
+            {
+                address &= 0x30;
+            }
+            return _paletteMemory[GetPaletteAddress(address)];
+        }
+
+        private byte PpuRead(ushort address, ref Ricoh2C02Pins pins)
+        {
+            var result = pins.PpuData;
 
             if (address >= 0x3F00 && address <= 0x3FFF)
             {
-                if (_ppuMaskRegister.Grayscale)
-                {
-                    address &= 0x30;
-                }
-                result = _ppuDataReadBuffer = _paletteMemory[GetPaletteAddress(address)];
+                result = pins.PpuData = ReadPaletteMemory(address);
             }
             else
             {
                 // Return the contents of the internal read buffer,
-                // and update the contents of the internal read buffer.
-                _ppuDataReadBuffer = _ppuBus.Read(address);
+                // and set the PPU pins so we'll have the actual data available
+                // in the next cycle.
+                pins.PpuAddress = address;
+                pins.PpuRW = true;
             }
 
             return result;
         }
 
-        private void PpuWrite(ushort address, byte data)
+        private void PpuWrite(ushort address, byte data, ref Ricoh2C02Pins pins)
         {
             if (address >= 0x3F00 && address <= 0x3FFF)
             {
                 _paletteMemory[GetPaletteAddress(address)] = data;
             }
 
-            _ppuBus.Write(address, data);
+            // TODO: This currently means we'll write to the VRAM range between 0x3F00..0x3FFF.
+            pins.PpuAddress = address;
+            pins.PpuData = data;
+            pins.PpuRW = false;
         }
 
         private static ushort GetPaletteAddress(ushort address)
@@ -311,12 +313,11 @@ namespace Aemula.Chips.Ricoh2C02
         public IEnumerable<DebuggerWindow> CreateDebuggerWindows()
         {
             yield return new PaletteWindow(this);
-            yield return new PatternTableWindow(this);
         }
 
         internal Color GetColor(ushort address)
         {
-            var paletteId = PpuRead(address);
+            var paletteId = ReadPaletteMemory(address);
             return _systemPalette[paletteId];
         }
     }
