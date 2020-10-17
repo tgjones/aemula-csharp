@@ -331,3 +331,6 @@ ASALocalRun/
 
 # Local History for Visual Studio
 .localhistory/
+
+# C64 test suite
+!src/Aemula.Chips.Mos6502.Tests/Assets/C64TestSuite/bin/
