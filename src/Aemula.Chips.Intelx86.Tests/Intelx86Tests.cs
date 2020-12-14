@@ -2,13 +2,14 @@
 using System.IO;
 using Aemula.Bus;
 using Aemula.Memory;
-using Xunit;
+using NUnit.Framework;
 
 namespace Aemula.Chips.Intelx86.Tests
 {
     public class Intelx86Tests
     {
-        [Fact(Skip = "Not implemented yet")]
+        [Test]
+        [Ignore("Not implemented yet")]
         public void RunTest386()
         {
             var testRomPath = Path.Combine("TestSuite", "test386.bin");
@@ -27,7 +28,8 @@ namespace Aemula.Chips.Intelx86.Tests
             cpu.Run();
         }
 
-        [Fact(Skip = "Not implemented yet")]
+        [Test]
+        [Ignore("Not implemented yet")]
         public void RunCodeGolf()
         {
             // https://codegolf.stackexchange.com/questions/4732/emulate-an-intel-8086-cpu

@@ -1,11 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>netcoreapp3.1</TargetFramework>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<LangVersion>preview</LangVersion>
-	</PropertyGroup>
-
 	<ItemGroup>
 		<ProjectReference Include="..\Aemula\Aemula.csproj" />
 	</ItemGroup>

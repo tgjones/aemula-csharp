@@ -1,14 +1,15 @@
 using Aemula.Memory;
+using NUnit.Framework;
 using System.IO;
-using Xunit;
 
 namespace Aemula.Chips.Arm.Tests
 {
     public class ArmTests
     {
-        [Theory(Skip = "Not implemented yet")]
-        [InlineData("add")]
-        //[InlineData("push")]
+        [Test]
+        [TestCase("add")]
+        //[TestCase("push")]
+        [Ignore("Not implemented yet")]
         public void CanExecuteTestSuite(string testFile)
         {
             var binFilePath = Path.Combine("TestSuite", "v7", testFile + ".bin");
@@ -28,7 +29,7 @@ namespace Aemula.Chips.Arm.Tests
                 cpu.Step();
             }
 
-            Assert.Equal(0u, cpu.R[Registers.R0]);
+            Assert.AreEqual(0u, cpu.R[Registers.R0]);
         }
     }
 }
