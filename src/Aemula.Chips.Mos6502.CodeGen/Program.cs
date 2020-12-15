@@ -1,14 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.CodeAnalysis;
 
 namespace Aemula.Chips.Mos6502.CodeGen
 {
-    public static class Program
+    [Generator]
+    public class CodeGenerator : ISourceGenerator
     {
-        public static void Main()
+        public void Initialize(GeneratorInitializationContext context) { }
+
+        public void Execute(GeneratorExecutionContext context)
         {
             var sb = new StringBuilder();
 
@@ -40,7 +43,6 @@ namespace Aemula.Chips.Mos6502.CodeGen
                     if (line.Count == 0)
                     {
                         throw new InvalidOperationException();
-                        //break;
                     }
 
                     sb.AppendLine($"                case (0x{instruction.Opcode:X2} << 3) | {i}:");
@@ -69,7 +71,7 @@ namespace Aemula.Chips.Mos6502.CodeGen
             sb.AppendLine("    }");
             sb.AppendLine("}");
 
-            File.WriteAllText(@"..\..\..\..\Aemula.Chips.Mos6502\Mos6502.generated.cs", sb.ToString());
+            context.AddSource("Mos6502.generated.cs", sb.ToString());
         }
 
         private enum AddressingMode
