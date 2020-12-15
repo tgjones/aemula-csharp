@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Aemula.Bus;
-using Aemula.Chips.Mos6502;
 using Aemula.Chips.Ricoh2A03;
 using Aemula.Chips.Ricoh2C02;
 using Aemula.Consoles.Nes.UI;
@@ -20,9 +18,6 @@ namespace Aemula.Consoles.Nes
         private readonly byte[] _ram;
         private readonly byte[] _vram;
 
-        private Mos6502Pins _cpuPins;
-        private Ricoh2C02Pins _ppuPins;
-
         private TimeSpan _nextUpdateTime = TimeSpan.Zero;
 
         private Cartridge _cartridge;
@@ -34,7 +29,7 @@ namespace Aemula.Consoles.Nes
 
         public Nes()
         {
-            (Cpu, _cpuPins) = Ricoh2A03.Create();
+            Cpu = new Ricoh2A03();
 
             PpuBus = new Bus<ushort, byte>();
             Ppu = new Ricoh2C02();
@@ -70,7 +65,7 @@ namespace Aemula.Consoles.Nes
 
         private void DoCpuCycle()
         {
-            Cpu.Cycle(ref _cpuPins);
+            Cpu.Cycle();
 
             //if (_cpuPins.Sync)
             //{
@@ -79,7 +74,10 @@ namespace Aemula.Consoles.Nes
             //    Debug.WriteLine($"{cpu.PC.Value:X4}  A:{cpu.A:X2} X:{cpu.X:X2} Y:{cpu.Y:X2} P:{cpu.P.AsByte(false):X2} SP:{cpu.SP:X2} CPUC:{cycles - 7}");
             //}
 
-            var address = _cpuPins.Address.Value;
+            ref var cpuPins = ref Cpu.CpuCore.Pins;
+            ref var ppuPins = ref Ppu.Pins;
+
+            var address = cpuPins.Address.Value;
 
             // The 3 high bits dictate which chips are selected.
             var a13_a15 = address >> 13;
@@ -87,41 +85,41 @@ namespace Aemula.Consoles.Nes
             switch (a13_a15)
             {
                 case 0b000: // Internal RAM. Only address pins A0..A10 are connected.
-                    if (_cpuPins.RW)
+                    if (cpuPins.RW)
                     {
-                        _cpuPins.Data = _ram[address & 0x7FF];
+                        cpuPins.Data = _ram[address & 0x7FF];
                     }
                     else
                     {
-                        _ram[address & 0x7FF] = _cpuPins.Data;
+                        _ram[address & 0x7FF] = cpuPins.Data;
                     }
                     break;
 
                 case 0b001: // PPU ports. Only address pins A0..A2 are connected.
-                    _ppuPins.CpuRW = _cpuPins.RW;
-                    _ppuPins.CpuAddress = (byte)(address & 0x7);
-                    _ppuPins.CpuData = _cpuPins.Data;
-                    Ppu.CpuCycle(ref _ppuPins);
+                    ppuPins.CpuRW = cpuPins.RW;
+                    ppuPins.CpuAddress = (byte)(address & 0x7);
+                    ppuPins.CpuData = cpuPins.Data;
+                    Ppu.CpuCycle();
 
                     // Now handle reads / writes on PPU data bus.
-                    var pa13 = (_ppuPins.PpuAddress >> 13) & 1;
-                    if (_ppuPins.PpuRW)
+                    var pa13 = (ppuPins.PpuAddress >> 13) & 1;
+                    if (ppuPins.PpuRW)
                     {
                         if (pa13 == 1)
                         {
-                            _ppuPins.PpuData = _vram[_ppuPins.PpuAddress & 0x7FF];
+                            ppuPins.PpuData = _vram[ppuPins.PpuAddress & 0x7FF];
                         }
                         else
                         {
                             // TODO: Use mapper.
-                            _ppuPins.PpuData = _cartridge?.ChrRom[_ppuPins.PpuAddress] ?? 0;
+                            ppuPins.PpuData = _cartridge?.ChrRom[ppuPins.PpuAddress] ?? 0;
                         }
                     }
                     else
                     {
                         if (pa13 == 1)
                         {
-                            _vram[_ppuPins.PpuAddress & 0x7FF] = _ppuPins.PpuData;
+                            _vram[ppuPins.PpuAddress & 0x7FF] = ppuPins.PpuData;
                         }
                         else
                         {
@@ -138,11 +136,11 @@ namespace Aemula.Consoles.Nes
                 case 0b110:
                 case 0b111:
                     // This is ROM - can't write to it.
-                    if (_cpuPins.RW)
+                    if (cpuPins.RW)
                     {
                         // TODO: Mapper implementations.
                         // What follows is NROM-128, mapper 0.
-                        _cpuPins.Data = _cartridge?.PrgRom[address & 0x3FFF] ?? 0;
+                        cpuPins.Data = _cartridge?.PrgRom[address & 0x3FFF] ?? 0;
                     }
                     break;
             }
@@ -160,7 +158,7 @@ namespace Aemula.Consoles.Nes
 
         public override void Reset()
         {
-            _cpuPins.Res = true;
+            Cpu.CpuCore.Pins.Res = true;
         }
 
         internal byte ReadChrRom(ushort address)

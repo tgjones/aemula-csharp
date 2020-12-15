@@ -38,6 +38,8 @@ namespace Aemula.Chips.Ricoh2C02
         // Latch around two-bytes writes into 0x2005 and 0x2006
         private bool _firstWrite = true;
 
+        public Ricoh2C02Pins Pins;
+
         public Ricoh2C02()
         {
             _objectAttributeMemory = new byte[256];
@@ -121,8 +123,10 @@ namespace Aemula.Chips.Ricoh2C02
             // TODO
         }
 
-        public void CpuCycle(ref Ricoh2C02Pins pins)
+        public void CpuCycle()
         {
+            ref var pins = ref Pins;
+
             if (pins.CpuRW)
             {
                 var result = _currentLatchData;
@@ -157,7 +161,7 @@ namespace Aemula.Chips.Ricoh2C02
                         break;
 
                     case PpuDataAddress:
-                        result = PpuRead(_ppuAddress, ref pins);
+                        result = PpuRead(_ppuAddress);
                         IncrementPpuAddress();
                         break;
 
@@ -173,7 +177,7 @@ namespace Aemula.Chips.Ricoh2C02
             {
                 _currentLatchData = pins.CpuData;
 
-                switch (pins.CpuAddress)
+                switch (Pins.CpuAddress)
                 {
                     case PpuCtrlAddress:
                         _ppuCtrlRegister.Data.Value = pins.CpuData;
@@ -225,7 +229,7 @@ namespace Aemula.Chips.Ricoh2C02
                         break;
 
                     case PpuDataAddress:
-                        PpuWrite(_ppuAddress, pins.CpuData, ref pins);
+                        PpuWrite(_ppuAddress, pins.CpuData);
                         IncrementPpuAddress();
                         break;
 
@@ -237,14 +241,9 @@ namespace Aemula.Chips.Ricoh2C02
 
         private void IncrementPpuAddress()
         {
-            if (_ppuCtrlRegister.VRamAddressIncrementMode == VRamAddressIncrementMode.Add32)
-            {
-                _ppuAddress += 32;
-            }
-            else
-            {
-                _ppuAddress++;
-            }
+            _ppuAddress += (_ppuCtrlRegister.VRamAddressIncrementMode == VRamAddressIncrementMode.Add32)
+                ? 32
+                : 1;
         }
 
         private byte ReadPaletteMemory(ushort address)
@@ -256,8 +255,9 @@ namespace Aemula.Chips.Ricoh2C02
             return _paletteMemory[GetPaletteAddress(address)];
         }
 
-        private byte PpuRead(ushort address, ref Ricoh2C02Pins pins)
+        private byte PpuRead(ushort address)
         {
+            ref var pins = ref Pins;
             var result = pins.PpuData;
 
             if (address >= 0x3F00 && address <= 0x3FFF)
@@ -276,7 +276,7 @@ namespace Aemula.Chips.Ricoh2C02
             return result;
         }
 
-        private void PpuWrite(ushort address, byte data, ref Ricoh2C02Pins pins)
+        private void PpuWrite(ushort address, byte data)
         {
             if (address >= 0x3F00 && address <= 0x3FFF)
             {
@@ -284,6 +284,7 @@ namespace Aemula.Chips.Ricoh2C02
             }
 
             // TODO: This currently means we'll write to the VRAM range between 0x3F00..0x3FFF.
+            ref var pins = ref Pins;
             pins.PpuAddress = address;
             pins.PpuData = data;
             pins.PpuRW = false;

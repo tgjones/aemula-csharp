@@ -7,19 +7,7 @@ namespace Aemula.Chips.Mos6502
 {
     public sealed partial class Mos6502
     {
-        public static (Mos6502, Mos6502Pins) Create(Mos6502Options options)
-        {
-            var mos6502 = new Mos6502(options);
-
-            var pins = new Mos6502Pins
-            {
-                Sync = true,
-                Res = true,
-                RW = true
-            };
-
-            return (mos6502, pins);
-        }
+        public Mos6502Pins Pins;
 
         // Registers
         public byte A;
@@ -51,13 +39,22 @@ namespace Aemula.Chips.Mos6502
 
         private readonly bool _bcdEnabled;
 
-        private Mos6502(Mos6502Options options)
+        public Mos6502(Mos6502Options options)
         {
             _bcdEnabled = options.BcdEnabled;
+
+            Pins = new Mos6502Pins
+            {
+                Sync = true,
+                Res = true,
+                RW = true
+            };
         }
 
-        public void Tick(ref Mos6502Pins pins)
+        public void Tick()
         {
+            ref var pins = ref Pins;
+
             if (pins.Sync | pins.Irq | pins.Nmi | pins.Rdy | pins.Res)
             {
                 // TODO: Interrupt stuff.

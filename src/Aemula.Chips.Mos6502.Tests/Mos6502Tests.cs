@@ -13,11 +13,14 @@ namespace Aemula.Chips.Mos6502.Tests
         {
             var rom = File.ReadAllBytes(Path.Combine("Assets", "AllSuiteA.bin"));
             var ram = new byte[0x4000];
-            var (cpu, pins) = Mos6502.Create(Mos6502Options.Default);
+
+            var cpu = new Mos6502(Mos6502Options.Default);
+
+            ref var pins = ref cpu.Pins;
 
             while (cpu.PC.Value != 0x45C2)
             {
-                cpu.Tick(ref pins);
+                cpu.Tick();
 
                 var address = pins.Address.Value;
 
@@ -51,11 +54,13 @@ namespace Aemula.Chips.Mos6502.Tests
             ram[0xFFFC] = 0x00;
             ram[0xFFFD] = 0x04;
 
-            var (cpu, pins) = Mos6502.Create(Mos6502Options.Default);
+            var cpu = new Mos6502(Mos6502Options.Default);
+
+            ref var pins = ref cpu.Pins;
 
             while (cpu.PC.Value != 0x3399 && cpu.PC.Value != 0xD0FE)
             {
-                cpu.Tick(ref pins);
+                cpu.Tick();
 
                 var address = pins.Address.Value;
 
@@ -91,7 +96,8 @@ namespace Aemula.Chips.Mos6502.Tests
             // APU and I/O registers - for the purposes of this test, treat them as RAM.
             var apu = new byte[0x18];
 
-            var (cpu, pins) = Mos6502.Create(new Mos6502Options(bcdEnabled: false));
+            var cpu = new Mos6502(new Mos6502Options(bcdEnabled: false));
+            ref var pins = ref cpu.Pins;
 
             using (var streamWriter = new StreamWriter("nestest_aemula.log"))
             {
@@ -100,7 +106,7 @@ namespace Aemula.Chips.Mos6502.Tests
 
                 while (cpu.PC.Value != 0xC66E)
                 {
-                    cpu.Tick(ref pins);
+                    cpu.Tick();
 
                     cycles += 1;
 
@@ -175,9 +181,9 @@ namespace Aemula.Chips.Mos6502.Tests
                 _ => ((char)character).ToString()
             };
 
-            static void SetupTest(string fileName, out byte[] ram, out Mos6502 cpu, out Mos6502Pins pins)
+            static void SetupTest(string fileName, out byte[] ram, out Mos6502 cpu)
             {
-                (cpu, pins) = Mos6502.Create(Mos6502Options.Default);
+                cpu = new Mos6502(Mos6502Options.Default);
 
                 ram = new byte[0x10000];
 
@@ -245,12 +251,14 @@ namespace Aemula.Chips.Mos6502.Tests
 
             while (true)
             {
-                SetupTest(testFileName, out var ram, out var cpu, out var pins);
+                SetupTest(testFileName, out var ram, out var cpu);
+
+                ref var pins = ref cpu.Pins;
 
                 var continueTest = true;
                 while (continueTest)
                 {
-                    cpu.Tick(ref pins);
+                    cpu.Tick();
 
                     var address = pins.Address.Value;
 

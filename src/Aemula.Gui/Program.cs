@@ -114,7 +114,7 @@ namespace Aemula.Gui
                         if (ImGui.MenuItem("Open .nes..."))
                         {
                             // TODO
-                            var cartridge = Cartridge.FromFile(@"C:\CodePersonal\Aemula\src\Aemula.Chips.Mos6502.Tests\Assets\nestest.nes");
+                            var cartridge = Cartridge.FromFile(@"../../../../Aemula.Chips.Mos6502.Tests/Assets/nestest.nes");
                             _nes.InsertCartridge(cartridge);
                             _nes.Reset();
                         }

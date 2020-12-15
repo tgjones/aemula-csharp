@@ -18,9 +18,9 @@
 
             public SpriteSize SpriteSize => (SpriteSize)Data.Get(5, 1);
 
-            public bool SlaveMode => Data.Get(6, 1) == 1;
+            public bool SlaveMode => Data.GetBit(6);
 
-            public bool EnableNmi => Data.Get(7, 1) == 1;
+            public bool EnableNmi => Data.GetBit(7);
         }
 
         private enum VRamAddressIncrementMode
@@ -39,21 +39,21 @@
         {
             public PackedByte Data;
 
-            public bool Grayscale => Data.Get(0, 1) == 1;
+            public bool Grayscale => Data.GetBit(0);
 
-            public bool RenderBackgroundLeft => Data.Get(1, 1) == 1;
+            public bool RenderBackgroundLeft => Data.GetBit(1);
 
-            public bool RenderSpritesLeft => Data.Get(2, 1) == 1;
+            public bool RenderSpritesLeft => Data.GetBit(2);
 
-            public bool RenderBackground => Data.Get(3, 1) == 1;
+            public bool RenderBackground => Data.GetBit(3);
 
-            public bool RenderSprites => Data.Get(4, 1) == 1;
+            public bool RenderSprites => Data.GetBit(4);
 
-            public bool EmphasizeRed => Data.Get(5, 1) == 1;
+            public bool EmphasizeRed => Data.GetBit(5);
 
-            public bool EmphasizeGreen => Data.Get(6, 1) == 1;
+            public bool EmphasizeGreen => Data.GetBit(6);
 
-            public bool EmphasizeBlue => Data.Get(7, 1) == 1;
+            public bool EmphasizeBlue => Data.GetBit(7);
         }
 
         private struct PpuStatusRegister

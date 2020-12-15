@@ -28,6 +28,11 @@
             return (byte)(Value & (mask << start));
         }
 
+        public bool GetBit(int bit)
+        {
+            return (Value & (1 << bit)) == 1;
+        }
+
         public void Set(int start, int count, byte data)
         {
             var mask = BitMasks[count];

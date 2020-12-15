@@ -6,30 +6,23 @@ namespace Aemula.Chips.Ricoh2A03
 {
     public sealed partial class Ricoh2A03
     {
-        public static (Ricoh2A03, Mos6502Pins) Create()
-        {
-            var (mos6502, pins) = Mos6502.Mos6502.Create(Mos6502Options.Default);
-
-            var ricoh2A03 = new Ricoh2A03(mos6502);
-
-            return (ricoh2A03, pins);
-        }
-
         private const ushort OamDmaAddress = 0x4014;
         private readonly DmaUnit _dmaUnit;
 
         public readonly Mos6502.Mos6502 CpuCore;
 
-        private Ricoh2A03(Mos6502.Mos6502 cpuCore)
+        public Ricoh2A03()
         {
-            CpuCore = cpuCore;
+            CpuCore = new Mos6502.Mos6502(Mos6502Options.Default);
 
             _dmaUnit = new DmaUnit();
         }
 
-        public void Cycle(ref Mos6502Pins pins)
+        public void Cycle()
         {
             // TODO: APU stuff.
+
+            ref var pins = ref CpuCore.Pins;
 
             _dmaUnit.Cycle(ref pins);
 
@@ -38,7 +31,7 @@ namespace Aemula.Chips.Ricoh2A03
                 return;
             }
 
-            CpuCore.Tick(ref pins);
+            CpuCore.Tick();
 
             var address = pins.Address.Value;
 
