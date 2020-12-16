@@ -77,7 +77,7 @@ namespace Aemula.Consoles.Nes
             ref var cpuPins = ref Cpu.CpuCore.Pins;
             ref var ppuPins = ref Ppu.Pins;
 
-            var address = cpuPins.Address.Value;
+            var address = cpuPins.Address;
 
             // The 3 high bits dictate which chips are selected.
             var a13_a15 = address >> 13;

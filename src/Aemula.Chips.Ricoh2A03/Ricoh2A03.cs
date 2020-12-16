@@ -33,7 +33,7 @@ namespace Aemula.Chips.Ricoh2A03
 
             CpuCore.Tick();
 
-            var address = pins.Address.Value;
+            var address = pins.Address;
 
             if (address >= 0x4000 && address <= 0x401F)
             {

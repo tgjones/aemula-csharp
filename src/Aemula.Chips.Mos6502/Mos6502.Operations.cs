@@ -212,10 +212,10 @@ namespace Aemula.Chips.Mos6502
         private void IncrementTimingRegisterIfNoPageCrossing(byte addend)
         {
             // Original high-byte
-            var original = _ad.Hi;
+            var original = _ad >> 8;
 
             // High-byte after adding value
-            var modified = (_ad + addend).Hi;
+            var modified = (_ad + addend) >> 8;
 
             // Delta will be either 0 (if it didn't cross page) or -1 (if it did).
             var delta = original - modified;

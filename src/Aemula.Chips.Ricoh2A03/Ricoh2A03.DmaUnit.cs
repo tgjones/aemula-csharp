@@ -30,7 +30,7 @@ namespace Aemula.Chips.Ricoh2A03
                     // Only do a read if a DMA transfer is actually active.
                     if (DmaState == DmaState.Active)
                     {
-                        pins.Address = new SplitUInt16 { Value = (ushort)((_dmaHiByte << 8) | _dmaLoByte) };
+                        pins.Address = (ushort)((_dmaHiByte << 8) | _dmaLoByte);
                         pins.RW = true;
                     }
                     _isDmaReadCycle = false;
@@ -40,7 +40,7 @@ namespace Aemula.Chips.Ricoh2A03
                     // Only do a write if a DMA transfer is actually active.
                     if (DmaState == DmaState.Active)
                     {
-                        pins.Address = new SplitUInt16 { Value = 0x2004 };
+                        pins.Address = 0x2004;
                         pins.RW = false;
 
                         // Check if we have finished the DMA transfer.

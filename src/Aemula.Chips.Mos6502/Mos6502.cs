@@ -15,7 +15,7 @@ namespace Aemula.Chips.Mos6502
         public byte Y;
 
         // Program counter
-        public SplitUInt16 PC;
+        public ushort PC;
 
         // Stack pointer
         public byte SP;
@@ -35,7 +35,7 @@ namespace Aemula.Chips.Mos6502
 
         private BrkFlags _brkFlags;
 
-        private SplitUInt16 _ad;
+        private ushort _ad;
 
         private readonly bool _bcdEnabled;
 

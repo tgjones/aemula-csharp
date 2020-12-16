@@ -88,7 +88,7 @@ namespace Aemula.Chips.Mos6502.CodeGen
             IndexedIndirectX,
             IndirectIndexedY,
             Indirect,
-            JSR,
+            Jsr,
             Invalid,
         }
 
@@ -106,7 +106,7 @@ namespace Aemula.Chips.Mos6502.CodeGen
             AddressingMode.IndexedIndirectX => "(zp,X)",
             AddressingMode.IndirectIndexedY => "(zp),Y",
             AddressingMode.Indirect => "ind",
-            AddressingMode.JSR => "",
+            AddressingMode.Jsr => "",
             AddressingMode.Invalid => "invalid",
             _ => throw new ArgumentOutOfRangeException(),
         };
@@ -139,7 +139,7 @@ namespace Aemula.Chips.Mos6502.CodeGen
         {
             // Interrupt, jump, subroutine
             new Instruction(0x00, "BRK", AddressingMode.None,             MemoryAccess.None),
-            new Instruction(0x20, "JSR", AddressingMode.JSR,              MemoryAccess.None),
+            new Instruction(0x20, "JSR", AddressingMode.Jsr,              MemoryAccess.None),
             new Instruction(0x40, "RTI", AddressingMode.None,             MemoryAccess.None),
             new Instruction(0x60, "RTS", AddressingMode.None,             MemoryAccess.None),
             new Instruction(0x4C, "JMP", AddressingMode.Absolute,         MemoryAccess.None),
@@ -518,8 +518,6 @@ namespace Aemula.Chips.Mos6502.CodeGen
 
             public void EncodeOperation(string mnemonic, AddressingMode addressingMode)
             {
-                string GetMethodName() => mnemonic.Substring(0, 1) + mnemonic.Substring(1).ToLowerInvariant();
-
                 switch (mnemonic)
                 {
                     // Special cases
@@ -528,30 +526,28 @@ namespace Aemula.Chips.Mos6502.CodeGen
                             "{",
                             "    PC += 1;",
                             "}",
-                            "pins.Address.Hi = 0x01;",
-                            "pins.Address.Lo = SP--;",
-                            "pins.Data = PC.Hi;",
+                            "pins.Address = (ushort)(0x0100 | SP--);",
+                            "pins.Data = (byte)(PC >> 8);",
                             "pins.RW = (_brkFlags & BrkFlags.Reset) != 0;");
-                        Add("pins.Address.Lo = SP--;",
-                            "pins.Data = PC.Lo;",
+                        Add("pins.Address = (ushort)(0x0100 | SP--);",
+                            "pins.Data = (byte)(PC & 0xFF);",
                             "pins.RW = (_brkFlags & BrkFlags.Reset) != 0;");
-                        Add("pins.Address.Lo = SP--;",
+                        Add("pins.Address = (ushort)(0x0100 | SP--);",
                             "pins.Data = P.AsByte(_brkFlags == BrkFlags.None);",
-                            "_ad.Hi = 0xFF;",
                             "if ((_brkFlags & BrkFlags.Reset) != 0)",
                             "{",
-                            "    _ad.Lo = 0xFC;",
+                            "    _ad = 0xFFFC;",
                             "}",
                             "else",
                             "{",
                             "    pins.RW = false;",
-                            "    _ad.Lo = (_brkFlags & BrkFlags.Nmi) != 0",
-                            "        ? (byte)0xFA",
-                            "        : (byte)0xFE;",
+                            "    _ad = (_brkFlags & BrkFlags.Nmi) != 0",
+                            "        ? 0xFFFA",
+                            "        : 0xFFFE;",
                             "}");
-                        Add("pins.Address = _ad;", "_ad.Lo += 1;", "P.I = true;", "_brkFlags = BrkFlags.None;");
-                        Add("pins.Address.Lo = _ad.Lo;", "_ad.Lo = pins.Data;");
-                        Add("PC.Hi = pins.Data;", "PC.Lo = _ad.Lo;");
+                        Add("pins.Address = _ad++;", "P.I = true;", "_brkFlags = BrkFlags.None;");
+                        Add("pins.Address = _ad;", "_ad = pins.Data;");
+                        Add("PC = (ushort)((pins.Data << 8) | _ad);");
                         break;
 
                     case "JMP":
@@ -562,43 +558,41 @@ namespace Aemula.Chips.Mos6502.CodeGen
                         // Read low byte of target address.
                         Add("pins.Address = PC++;");
                         // Put SP on address bus.
-                        Add("pins.Address.Hi = 0x01;", "pins.Address.Lo = SP;", "_ad.Lo = pins.Data;");
+                        Add("pins.Address = (ushort)(0x0100 | SP);", "_ad = pins.Data;");
                         // Write PC high byte to stack.
-                        Add("pins.Address.Lo = SP--;", "pins.Data = PC.Hi;", "pins.RW = false;");
+                        Add("pins.Address = (ushort)(0x0100 | SP--);", "pins.Data = (byte)(PC >> 8);", "pins.RW = false;");
                         // Write PC low byte to stack.
-                        Add("pins.Address.Lo = SP--;", "pins.Data = PC.Lo;", "pins.RW = false;");
+                        Add("pins.Address = (ushort)(0x0100 | SP--);", "pins.Data = (byte)(PC & 0xFF);", "pins.RW = false;");
                         // Read high byte of target address.
                         Add("pins.Address = PC;");
-                        Add("PC.Hi = pins.Data;", "PC.Lo = _ad.Lo;");
+                        Add("PC = (ushort)((pins.Data << 8) | _ad);");
                         break;
 
                     case "PLA":
-                        Add("pins.Address.Hi = 0x01;",
-                            "pins.Address.Lo = SP++;");
-                        Add("pins.Address.Lo = SP;");
+                        Add("pins.Address = (ushort)(0x0100 | SP++);");
+                        Add("pins.Address = (ushort)(0x0100 | SP);");
                         Add("A = P.SetZeroNegativeFlags(pins.Data);");
                         break;
 
                     case "PLP":
-                        Add("pins.Address.Hi = 0x01;",
-                            "pins.Address.Lo = SP++;");
-                        Add("pins.Address.Lo = SP;");
+                        Add("pins.Address = (ushort)(0x0100 | SP++);");
+                        Add("pins.Address = (ushort)(0x0100 | SP);");
                         Add("P.SetFromByte(P.SetZeroNegativeFlags(pins.Data));");
                         break;
 
                     case "RTI":
-                        Add("pins.Address.Hi = 0x01;", "pins.Address.Lo = SP++;");
-                        Add("pins.Address.Lo = SP++;");
-                        Add("pins.Address.Lo = SP++;", "P.SetFromByte(pins.Data);");
-                        Add("pins.Address.Lo = SP;", "_ad.Lo = pins.Data;");
-                        Add("PC.Hi = pins.Data;", "PC.Lo = _ad.Lo;");
+                        Add("pins.Address = (ushort)(0x0100 | SP++);");
+                        Add("pins.Address = (ushort)(0x0100 | SP++);");
+                        Add("pins.Address = (ushort)(0x0100 | SP++);", "P.SetFromByte(pins.Data);");
+                        Add("pins.Address = (ushort)(0x0100 | SP);", "_ad = pins.Data;");
+                        Add("PC = (ushort)((pins.Data << 8) | _ad);");
                         break;
 
                     case "RTS":
-                        Add("pins.Address.Hi = 0x01;", "pins.Address.Lo = SP++;");
-                        Add("pins.Address.Lo = SP++;");
-                        Add("pins.Address.Lo = SP;", "_ad.Lo = pins.Data;");
-                        Add("PC.Hi = pins.Data;", "PC.Lo = _ad.Lo;", "pins.Address = PC++;");
+                        Add("pins.Address = (ushort)(0x0100 | SP++);");
+                        Add("pins.Address = (ushort)(0x0100 | SP++);");
+                        Add("pins.Address = (ushort)(0x0100 | SP);", "_ad = pins.Data;");
+                        Add("PC = (ushort)((pins.Data << 8) | _ad);", "pins.Address = PC++;");
                         Add("");
                         break;
 
@@ -651,15 +645,13 @@ namespace Aemula.Chips.Mos6502.CodeGen
                         break;
 
                     case "PHA":
-                        Add("pins.Address.Hi = 0x01;",
-                            "pins.Address.Lo = SP--;",
+                        Add("pins.Address = (ushort)(0x0100 | SP--);",
                             "pins.Data = A;",
                             "pins.RW = false;");
                         break;
 
                     case "PHP":
-                        Add("pins.Address.Hi = 0x01;",
-                            "pins.Address.Lo = SP--;",
+                        Add("pins.Address = (ushort)(0x0100 | SP--);",
                             "pins.Data = P.AsByte(true);",
                             "pins.RW = false;");
                         break;
@@ -723,11 +715,11 @@ namespace Aemula.Chips.Mos6502.CodeGen
                         break;
 
                     case "SHX":
-                        ModifyPrevious("pins.Data = (byte)(X & (pins.Address.Hi + 1));", "pins.RW = false;");
+                        ModifyPrevious("pins.Data = (byte)(X & ((pins.Address >> 8) + 1));", "pins.RW = false;");
                         break;
 
                     case "SHY":
-                        ModifyPrevious("pins.Data = (byte)(Y & (pins.Address.Hi + 1));", "pins.RW = false;");
+                        ModifyPrevious("pins.Data = (byte)(Y & ((pins.Address >> 8) + 1));", "pins.RW = false;");
                         break;
 
                     case "LAX":
@@ -967,15 +959,15 @@ namespace Aemula.Chips.Mos6502.CodeGen
             private void EncodeBranch(string register, bool value)
             {
                 Add("pins.Address = PC;",
-                    "_ad = PC + (sbyte)pins.Data;",
+                    "_ad = (ushort)(PC + (sbyte)pins.Data);",
                     $"if (P.{register} != {value.ToString().ToLowerInvariant()})",
                     "{",
                     "    FetchNextInstruction(ref pins);",
                     "}");
 
                 // Executed if branch was taken.
-                Add("pins.Address.Lo = _ad.Lo;",
-                    "if (_ad.Hi == PC.Hi)",
+                Add("pins.Address = (ushort)((PC & 0xFF00) | (_ad & 0xFF));",
+                    "if ((_ad & 0xFF00) == (PC & 0xFF00))",
                     "{",
                     "    PC = _ad;",
                     "    FetchNextInstruction(ref pins);",
@@ -987,7 +979,7 @@ namespace Aemula.Chips.Mos6502.CodeGen
 
             private void AddRmwCycle()
             {
-                Add("_ad.Lo = pins.Data;", "pins.RW = false;");
+                Add("_ad = pins.Data;", "pins.RW = false;");
             }
 
             private static string[] GetOpsCmp(string register) => new[]
@@ -1008,7 +1000,7 @@ namespace Aemula.Chips.Mos6502.CodeGen
 
             private static readonly string[] OpsAsl =
             {
-                "pins.Data = AslHelper(_ad.Lo);",
+                "pins.Data = AslHelper((byte)_ad);",
                 "pins.RW = false;"
             };
 
@@ -1016,7 +1008,7 @@ namespace Aemula.Chips.Mos6502.CodeGen
 
             private static readonly string[] OpsDec =
             {
-                "pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo - 1));",
+                "pins.Data = P.SetZeroNegativeFlags((byte)(_ad - 1));",
                 "pins.RW = false;"
             };
 
@@ -1027,13 +1019,13 @@ namespace Aemula.Chips.Mos6502.CodeGen
 
             private static readonly string[] OpsInc =
             {
-                "pins.Data = P.SetZeroNegativeFlags((byte)(_ad.Lo + 1));",
+                "pins.Data = P.SetZeroNegativeFlags((byte)(_ad + 1));",
                 "pins.RW = false;"
             };
 
             private static readonly string[] OpsLsr =
             {
-                "pins.Data = LsrHelper(_ad.Lo);",
+                "pins.Data = LsrHelper((byte)_ad);",
                 "pins.RW = false;"
             };
 
@@ -1049,13 +1041,13 @@ namespace Aemula.Chips.Mos6502.CodeGen
 
             private static readonly string[] OpsRol =
             {
-                "pins.Data = RolHelper(_ad.Lo);",
+                "pins.Data = RolHelper((byte)_ad);",
                 "pins.RW = false;"
             };
 
             private static readonly string[] OpsRor =
             {
-                "pins.Data = RorHelper(_ad.Lo);",
+                "pins.Data = RorHelper((byte)_ad);",
                 "pins.RW = false;"
             };
 
@@ -1071,7 +1063,7 @@ namespace Aemula.Chips.Mos6502.CodeGen
 
             private static readonly string[] OpsSha =
             {
-                "pins.Data = (byte)(A & X & (pins.Address.Hi + 1));",
+                "pins.Data = (byte)(A & X & ((pins.Address >> 8) + 1));",
                 "pins.RW = false;"
             };
 
@@ -1096,77 +1088,77 @@ namespace Aemula.Chips.Mos6502.CodeGen
                     case AddressingMode.ZeroPageX:
                         Add("pins.Address = PC++;");
                         Add("_ad = pins.Data;", "pins.Address = _ad;");
-                        Add("pins.Address = (byte)(_ad.Lo + X);");
+                        Add("pins.Address = (byte)(_ad + X);");
                         break;
 
                     case AddressingMode.ZeroPageY:
                         Add("pins.Address = PC++;");
                         Add("_ad = pins.Data;", "pins.Address = _ad;");
-                        Add("pins.Address = (byte)(_ad.Lo + Y);");
+                        Add("pins.Address = (byte)(_ad + Y);");
                         break;
 
                     case AddressingMode.Absolute:
                         Add("pins.Address = PC++;");
-                        Add("pins.Address = PC++;", "_ad.Lo = pins.Data;");
-                        Add("pins.Address.Hi = pins.Data;", "pins.Address.Lo = _ad.Lo;");
+                        Add("pins.Address = PC++;", "_ad = pins.Data;");
+                        Add("pins.Address = (ushort)((pins.Data << 8)| _ad);");
                         break;
 
                     case AddressingMode.AbsoluteX:
                         Add("pins.Address = PC++;");
-                        Add("pins.Address = PC++;", "_ad.Lo = pins.Data;");
-                        Add("_ad.Hi = pins.Data;", "pins.Address.Hi = _ad.Hi;", "pins.Address.Lo = (byte)(_ad.Lo + X);");
+                        Add("pins.Address = PC++;", "_ad = pins.Data;");
+                        Add("_ad |= (ushort)(pins.Data << 8);", "pins.Address = (ushort)((_ad & 0xFF00) | (byte)(_ad + X));");
                         if (instruction.MemoryAccess == MemoryAccess.Read)
                         {
                             ModifyPrevious("IncrementTimingRegisterIfNoPageCrossing(X);");
                         }
-                        Add("pins.Address = _ad + X;");
+                        Add("pins.Address = (ushort)(_ad + X);");
                         break;
 
                     case AddressingMode.AbsoluteY:
                         Add("pins.Address = PC++;");
-                        Add("pins.Address = PC++;", "_ad.Lo = pins.Data;");
-                        Add("_ad.Hi = pins.Data;", "pins.Address.Hi = _ad.Hi;", "pins.Address.Lo = (byte)(_ad.Lo + Y);");
+                        Add("pins.Address = PC++;", "_ad = pins.Data;");
+                        Add("_ad |= (ushort)(pins.Data << 8);", "pins.Address = (ushort)((_ad & 0xFF00) | (byte)(_ad + Y));");
                         if (instruction.MemoryAccess == MemoryAccess.Read)
                         {
                             ModifyPrevious("IncrementTimingRegisterIfNoPageCrossing(Y);");
                         }
-                        Add("pins.Address = _ad + Y;");
+                        Add("pins.Address = (ushort)(_ad + Y);");
                         break;
 
                     case AddressingMode.IndexedIndirectX:
                         Add("pins.Address = PC++;");
                         Add("_ad = pins.Data;", "pins.Address = _ad;");
-                        Add("_ad.Lo += X;", "pins.Address.Lo = _ad.Lo;");
-                        Add("pins.Address.Lo = (byte)(_ad.Lo + 1);", "_ad.Lo = pins.Data;");
-                        Add("pins.Address.Hi = pins.Data;", "pins.Address.Lo = _ad.Lo;");
+                        Add("_ad = (byte)(_ad + X);", "pins.Address = _ad;");
+                        Add("pins.Address = (byte)(_ad + 1);", "_ad = pins.Data;");
+                        Add("pins.Address = (ushort)((pins.Data << 8) | _ad);");
                         break;
 
                     case AddressingMode.IndirectIndexedY:
                         Add("pins.Address = PC++;");
                         Add("_ad = pins.Data;", "pins.Address = _ad;");
-                        Add("pins.Address.Lo = (byte)(_ad.Lo + 1);", "_ad.Lo = pins.Data;");
-                        Add("_ad.Hi = pins.Data;", "pins.Address.Hi = _ad.Hi;", "pins.Address.Lo = (byte)(_ad.Lo + Y);");
+                        Add("pins.Address = (byte)(_ad + 1);", "_ad = pins.Data;");
+                        Add("_ad |= (ushort)(pins.Data << 8);", "pins.Address = (ushort)((_ad & 0xFF00) | (byte)(_ad + Y));");
                         if (instruction.MemoryAccess == MemoryAccess.Read)
                         {
                             ModifyPrevious("IncrementTimingRegisterIfNoPageCrossing(Y);");
                         }
-                        Add("pins.Address = _ad + Y;");
+                        Add("pins.Address = (ushort)(_ad + Y);");
                         break;
 
                     case AddressingMode.Indirect:
                         Add("pins.Address = PC++;");
-                        Add("pins.Address = PC++;", "_ad.Lo = pins.Data;");
-                        Add("_ad.Hi = pins.Data;", "pins.Address = _ad;");
-                        Add("pins.Address.Lo = (byte)(_ad.Lo + 1);", "_ad.Lo = pins.Data;");
-                        Add("pins.Address.Hi = pins.Data;", "pins.Address.Lo = _ad.Lo;");
+                        Add("pins.Address = PC++;", "_ad = pins.Data;");
+                        Add("_ad |= (ushort)(pins.Data << 8);", "pins.Address = _ad;");
+                        Add("pins.Address = (ushort)((_ad & 0xFF00) | (byte)(_ad + 1));", "_ad = pins.Data;");
+                        Add("pins.Address = (ushort)((pins.Data << 8) | _ad);");
                         break;
 
-                    case AddressingMode.JSR:
+                    case AddressingMode.Jsr:
                         break;
 
                     case AddressingMode.Invalid:
                         Add("pins.Address = PC;");
-                        Add("pins.Address.Hi = 0xFF;", "pins.Address.Lo = 0xFF;", "pins.Data = 0xFF;", "_ir--;");
+                        Add("pins.Address = 0xFFFF;", "pins.Data = 0xFF;", "_ir--;");
                         break;
 
                     default:

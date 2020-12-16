@@ -18,11 +18,11 @@ namespace Aemula.Chips.Mos6502.Tests
 
             ref var pins = ref cpu.Pins;
 
-            while (cpu.PC.Value != 0x45C2)
+            while (cpu.PC != 0x45C2)
             {
                 cpu.Tick();
 
-                var address = pins.Address.Value;
+                var address = pins.Address;
 
                 if (pins.RW)
                 {
@@ -58,11 +58,11 @@ namespace Aemula.Chips.Mos6502.Tests
 
             ref var pins = ref cpu.Pins;
 
-            while (cpu.PC.Value != 0x3399 && cpu.PC.Value != 0xD0FE)
+            while (cpu.PC != 0x3399 && cpu.PC != 0xD0FE)
             {
                 cpu.Tick();
 
-                var address = pins.Address.Value;
+                var address = pins.Address;
 
                 if (pins.RW)
                 {
@@ -74,7 +74,7 @@ namespace Aemula.Chips.Mos6502.Tests
                 }
             }
 
-            Assert.AreEqual(0x3399, cpu.PC.Value);
+            Assert.AreEqual(0x3399, cpu.PC);
         }
 
         [Test]
@@ -104,7 +104,7 @@ namespace Aemula.Chips.Mos6502.Tests
                 var cycles = 0;
                 var shouldLog = false;
 
-                while (cpu.PC.Value != 0xC66E)
+                while (cpu.PC != 0xC66E)
                 {
                     cpu.Tick();
 
@@ -117,10 +117,10 @@ namespace Aemula.Chips.Mos6502.Tests
 
                     if (shouldLog && pins.Sync)
                     {
-                        streamWriter.WriteLine($"{cpu.PC.Value:X4}  A:{cpu.A:X2} X:{cpu.X:X2} Y:{cpu.Y:X2} P:{cpu.P.AsByte(false):X2} SP:{cpu.SP:X2} CPUC:{cycles - 7}");
+                        streamWriter.WriteLine($"{cpu.PC:X4}  A:{cpu.A:X2} X:{cpu.X:X2} Y:{cpu.Y:X2} P:{cpu.P.AsByte(false):X2} SP:{cpu.SP:X2} CPUC:{cycles - 7}");
                     }
 
-                    var address = pins.Address.Value;
+                    var address = pins.Address;
 
                     if (pins.RW)
                     {
@@ -260,7 +260,7 @@ namespace Aemula.Chips.Mos6502.Tests
                 {
                     cpu.Tick();
 
-                    var address = pins.Address.Value;
+                    var address = pins.Address;
 
                     if (pins.RW)
                     {
