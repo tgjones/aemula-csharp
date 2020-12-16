@@ -1,1 +1,0 @@
-Downloaded from https://codegolf.stackexchange.com/questions/4732/emulate-an-intel-8086-cpu

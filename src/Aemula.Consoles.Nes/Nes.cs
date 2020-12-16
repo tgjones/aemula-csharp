@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Aemula.Bus;
 using Aemula.Chips.Ricoh2A03;
 using Aemula.Chips.Ricoh2C02;
 using Aemula.Consoles.Nes.UI;
@@ -24,14 +23,12 @@ namespace Aemula.Consoles.Nes
 
         public readonly Ricoh2A03 Cpu;
 
-        public readonly Bus<ushort, byte> PpuBus;
         public readonly Ricoh2C02 Ppu;
 
         public Nes()
         {
             Cpu = new Ricoh2A03();
 
-            PpuBus = new Bus<ushort, byte>();
             Ppu = new Ricoh2C02();
 
             _ram = new byte[0x0800];
