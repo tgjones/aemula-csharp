@@ -109,7 +109,6 @@ namespace Aemula.Chips.Mos6502
         public IEnumerable<DebuggerWindow> CreateDebuggerWindows()
         {
             yield return new CpuStateWindow(this);
-            //yield return new DisassemblyWindow(this);
         }
     }
 

@@ -30,10 +30,24 @@ namespace Aemula.Chips.Ricoh2C02
 
         private byte _currentLatchData;
 
+        private ushort _currentScanline;
+        private ushort _currentDot;
+
+
+
         // Registers
         private PpuCtrlRegister _ppuCtrlRegister;
         private PpuMaskRegister _ppuMaskRegister;
         private PpuStatusRegister _ppuStatusRegister;
+
+        // Current VRAM address (15 bits)
+        private ushort _v;
+
+        // Temporary VRAM address (15 bits)
+        private ushort _t;
+
+        // Fine X scroll (3 bits)
+        private byte _x;
 
         // Latch around two-bytes writes into 0x2005 and 0x2006
         private bool _firstWrite = true;
@@ -121,6 +135,28 @@ namespace Aemula.Chips.Ricoh2C02
         public void Cycle()
         {
             // TODO
+
+            // Conceptually, the PPU does this 33 times for each scanline:
+            // 
+            // Fetch a nametable entry from $2000 -$2FBF.
+            // Fetch the corresponding attribute table entry from $23C0 -$2FFF and increment the current VRAM address within the same row.
+            // Fetch the low - order byte of an 8x1 pixel sliver of pattern table from $0000 -$0FF7 or $1000 -$1FF7.
+            // Fetch the high - order byte of this sliver from an address 8 bytes higher.
+            // Turn the attribute data and the pattern table data into palette indices, and combine them with data from sprite data using priority.
+            // It also does a fetch of a 34th(nametable, attribute, pattern) tuple that is never used, but some mappers rely on this fetch for timing purposes.
+
+
+            // Increment dot and scanline counters.
+           _currentDot++;
+            if (_currentDot == 341)
+            {
+                _currentDot = 0;
+                _currentScanline++;
+                if (_currentScanline == 262)
+                {
+                    _currentScanline = 0;
+                }
+            }
         }
 
         public void CpuCycle()

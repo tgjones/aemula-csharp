@@ -181,11 +181,14 @@ namespace Aemula.Chips.Mos6502.Tests
                 _ => ((char)character).ToString()
             };
 
-            static void SetupTest(string fileName, out byte[] ram, out Mos6502 cpu)
+            var ram = new byte[0x10000];
+
+            unsafe void SetupTest(string fileName, out Mos6502 cpu)
             {
                 cpu = new Mos6502(Mos6502Options.Default);
 
-                ram = new byte[0x10000];
+                // Note that we don't clear the RAM.
+                // The tests always (?) write to RAM before reading.
 
                 // Load test data.
                 // First two bytes contain starting address.
@@ -207,7 +210,7 @@ namespace Aemula.Chips.Mos6502.Tests
                 ram[0x01FF] = 0x7F;
 
                 // Install KERNAL "IRQ handler".
-                byte[] irqRoutine =
+                Span<byte> irqRoutine = stackalloc byte[]
                 {
                     0x48,             // PHA
                     0x8A,             // TXA
@@ -251,7 +254,7 @@ namespace Aemula.Chips.Mos6502.Tests
 
             while (true)
             {
-                SetupTest(testFileName, out var ram, out var cpu);
+                SetupTest(testFileName, out var cpu);
 
                 ref var pins = ref cpu.Pins;
 

@@ -13,6 +13,12 @@ namespace Aemula.Chips.Mos6502.CodeGen
 
         public void Execute(GeneratorExecutionContext context)
         {
+            WriteInstructions(context);
+            WriteDisassembler(context);
+        }
+
+        private static void WriteInstructions(GeneratorExecutionContext context)
+        {
             var sb = new StringBuilder();
 
             sb.AppendLine("using System;");
@@ -29,9 +35,7 @@ namespace Aemula.Chips.Mos6502.CodeGen
             sb.AppendLine("            switch ((_ir << 3) | _tr)");
             sb.AppendLine("            {");
 
-            var orderedInstructions = Instructions.OrderBy(x => x.Opcode);
-
-            foreach (var instruction in orderedInstructions)
+            foreach (var instruction in OrderedInstructions)
             {
                 var instructionCode = InstructionCode.FromInstruction(instruction);
 
@@ -71,7 +75,126 @@ namespace Aemula.Chips.Mos6502.CodeGen
             sb.AppendLine("    }");
             sb.AppendLine("}");
 
-            context.AddSource("Mos6502.generated.cs", sb.ToString());
+            context.AddSource("Mos6502.Instructions.generated.cs", sb.ToString());
+        }
+
+        private static void WriteDisassembler(GeneratorExecutionContext context)
+        {
+            // TODO: There's all kind of runtime string allocation here.
+
+            var sb = new StringBuilder();
+
+            sb.AppendLine("using System;");
+            sb.AppendLine("");
+            sb.AppendLine("namespace Aemula.Chips.Mos6502");
+            sb.AppendLine("{");
+            sb.AppendLine("    partial class Mos6502");
+            sb.AppendLine("    {");
+            sb.AppendLine("        public static DisassembledInstruction DisassembleInstruction(ushort address, Func<ushort, byte> readMemory)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            var opcode = readMemory(address);");
+            sb.AppendLine("            ");
+            sb.AppendLine("            switch (opcode)");
+            sb.AppendLine("            {");
+
+            foreach (var instruction in OrderedInstructions)
+            {
+                var addressingModeDescription = AddressingModeDescriptions[instruction.AddressingMode];
+
+                sb.AppendLine($"                // {instruction.Mnemonic} {addressingModeDescription.DisplayName}");
+                sb.AppendLine($"                case 0x{instruction.Opcode:X2}:");
+                sb.AppendLine("                {");
+
+                string rawBytes, formattedOperand;
+                switch (addressingModeDescription.NumOperands)
+                {
+                    case 0:
+                        rawBytes = "$\"{opcode:X2}\"";
+                        formattedOperand = "";
+                        break;
+
+                    case 1:
+                        sb.AppendLine("                    var operand = readMemory((ushort)(address + 1));");
+                        rawBytes = "$\"{opcode:X2} {operand:X2}\"";
+                        formattedOperand = $" {addressingModeDescription.OperandPrefix}${{operand:X2}}{addressingModeDescription.OperandSuffix}";
+                        break;
+
+                    case 2:
+                        sb.AppendLine("                    var operandLo = readMemory((ushort)(address + 1));");
+                        sb.AppendLine("                    var operandHi = readMemory((ushort)(address + 2));");
+                        sb.AppendLine("                    var operand = (ushort)((operandHi << 8) | operandLo);");
+                        rawBytes = "$\"{opcode:X2} {operandLo:X2} {operandHi:X2}\"";
+                        formattedOperand = $" {addressingModeDescription.OperandPrefix}${{operand:X4}}{addressingModeDescription.OperandSuffix}";
+                        break;
+
+                    default:
+                        throw new InvalidOperationException($"Invalid number of operands: {addressingModeDescription.NumOperands}");
+                }
+
+                string next0, next1;
+                switch (instruction.Mnemonic)
+                {
+                    case "JAM":
+                        next0 = next1 = "null";
+                        break;
+
+                    case "JMP":
+                        next0 = (instruction.AddressingMode == AddressingMode.Absolute)
+                            ? "operand"
+                            : "(ushort)(readMemory(operand) | (readMemory((ushort)(operand + 1)) << 8))";
+                        next1 = "null";
+                        break;
+
+                    case "JSR":
+                        // Include both the target subroutine address, and the next instruction after this one.
+                        next0 = $"(ushort)(address + {addressingModeDescription.NumOperands + 1})";
+                        next1 = "operand";
+                        break;
+
+                    case "BEQ":
+                    case "BCC":
+                    case "BCS":
+                    case "BMI":
+                    case "BNE":
+                    case "BPL":
+                    case "BVC":
+                    case "BVS":
+                        next0 = $"(ushort)(address + {addressingModeDescription.NumOperands + 1})";
+                        next1 = $"(ushort)(address + 2 + (sbyte)operand)";
+                        break;
+
+                    case "RTS":
+                        // We will have already returned the actual "next" in the JSR instruction
+                        next0 = next1 = "null";
+                        break;
+
+                    default:
+                        next0 = $"(ushort)(address + {addressingModeDescription.NumOperands + 1})";
+                        next1 = "null";
+                        break;
+                }
+
+                sb.AppendLine("                    return new DisassembledInstruction(");
+                sb.AppendLine("                        opcode,");
+                sb.AppendLine("                        address,");
+                sb.AppendLine("                        $\"{address:X4}\",");
+                sb.AppendLine($"                        {addressingModeDescription.NumOperands + 1},");
+                sb.AppendLine($"                        {rawBytes},");
+                sb.AppendLine($"                        $\"{instruction.Mnemonic}{formattedOperand}\",");
+                sb.AppendLine($"                        {next0},");
+                sb.AppendLine($"                        {next1});");
+                sb.AppendLine("                }");
+
+                sb.AppendLine("");
+            }
+
+            sb.AppendLine("            }");
+            sb.AppendLine("        }");
+            sb.AppendLine("    }");
+            sb.AppendLine("}");
+
+            System.IO.File.WriteAllText(@"C:\Users\Tim\Documents\GitHub\aemula-csharp\src\Aemula.Chips.Mos6502\obj\Mos6502.Disassembler.generated.cs", sb.ToString());
+            context.AddSource("Mos6502.Disassembler.generated.cs", sb.ToString());
         }
 
         private enum AddressingMode
@@ -92,23 +215,42 @@ namespace Aemula.Chips.Mos6502.CodeGen
             Invalid,
         }
 
-        private static string AddressingModeAsDisplayName(AddressingMode value) => value switch
+        private sealed class AddressingModeDescription
         {
-            AddressingMode.None => "",
-            AddressingMode.Accumulator => "",
-            AddressingMode.Immediate => "#",
-            AddressingMode.ZeroPage => "zp",
-            AddressingMode.ZeroPageX => "zp,X",
-            AddressingMode.ZeroPageY => "zp,Y",
-            AddressingMode.Absolute => "abs",
-            AddressingMode.AbsoluteX => "abs,X",
-            AddressingMode.AbsoluteY => "abs,Y",
-            AddressingMode.IndexedIndirectX => "(zp,X)",
-            AddressingMode.IndirectIndexedY => "(zp),Y",
-            AddressingMode.Indirect => "ind",
-            AddressingMode.Jsr => "",
-            AddressingMode.Invalid => "invalid",
-            _ => throw new ArgumentOutOfRangeException(),
+            public readonly string DisplayName;
+            public readonly int NumOperands;
+            public readonly string OperandPrefix;
+            public readonly string OperandSuffix;
+
+            public AddressingModeDescription(
+                string displayName, 
+                int numOperands, 
+                string operandPrefix, 
+                string operandSuffix)
+            {
+                DisplayName = displayName;
+                NumOperands = numOperands;
+                OperandPrefix = operandPrefix;
+                OperandSuffix = operandSuffix;
+            }
+        }
+
+        private static readonly Dictionary<AddressingMode, AddressingModeDescription> AddressingModeDescriptions = new Dictionary<AddressingMode, AddressingModeDescription>
+        {
+            { AddressingMode.None, new AddressingModeDescription("", 0, "", "") },
+            { AddressingMode.Accumulator, new AddressingModeDescription("", 0, "", "") },
+            { AddressingMode.Immediate, new AddressingModeDescription("#", 1, "#", "") },
+            { AddressingMode.ZeroPage, new AddressingModeDescription("zp", 1, "", "") },
+            { AddressingMode.ZeroPageX, new AddressingModeDescription("zp,X", 1, "", ",X") },
+            { AddressingMode.ZeroPageY, new AddressingModeDescription("zp,Y", 1, "", ",Y") },
+            { AddressingMode.Absolute, new AddressingModeDescription("abs", 2, "", "") },
+            { AddressingMode.AbsoluteX, new AddressingModeDescription("abs,X", 2, "", ",X") },
+            { AddressingMode.AbsoluteY, new AddressingModeDescription("abs,Y", 2, "", ",Y") },
+            { AddressingMode.IndexedIndirectX, new AddressingModeDescription("(zp,X)", 1, "(", ",X)") },
+            { AddressingMode.IndirectIndexedY, new AddressingModeDescription("(zp),Y", 1, "(", "),Y") },
+            { AddressingMode.Indirect, new AddressingModeDescription("ind", 2, "(", ")") },
+            { AddressingMode.Jsr, new AddressingModeDescription("", 2, "", "") },
+            { AddressingMode.Invalid, new AddressingModeDescription("invalid", 0, "", "") },
         };
 
         private enum MemoryAccess
@@ -121,10 +263,10 @@ namespace Aemula.Chips.Mos6502.CodeGen
 
         private sealed class Instruction
         {
-            public byte Opcode { get; }
-            public string Mnemonic { get; }
-            public AddressingMode AddressingMode { get; }
-            public MemoryAccess MemoryAccess { get; }
+            public readonly byte Opcode;
+            public readonly string Mnemonic;
+            public readonly AddressingMode AddressingMode;
+            public readonly MemoryAccess MemoryAccess;
 
             public Instruction(byte opcode, string mnemonic, AddressingMode addressingMode, MemoryAccess memoryAccess)
             {
@@ -489,6 +631,8 @@ namespace Aemula.Chips.Mos6502.CodeGen
             new Instruction(0x8C, "STY", AddressingMode.Absolute,         MemoryAccess.Write),
             new Instruction(0x94, "STY", AddressingMode.ZeroPageX,        MemoryAccess.Write),
         };
+
+        private static Instruction[] OrderedInstructions = Instructions.OrderBy(x => x.Opcode).ToArray();
 
         private sealed class InstructionCodeBuilder
         {
@@ -1171,7 +1315,7 @@ namespace Aemula.Chips.Mos6502.CodeGen
         {
             public static InstructionCode FromInstruction(Instruction instruction)
             {
-                var comment = $"{instruction.Mnemonic} {AddressingModeAsDisplayName(instruction.AddressingMode)}";
+                var comment = $"{instruction.Mnemonic} {AddressingModeDescriptions[instruction.AddressingMode].DisplayName}";
 
                 var codeBuilder = new InstructionCodeBuilder();
                 codeBuilder.EncodeAddressingMode(instruction);
