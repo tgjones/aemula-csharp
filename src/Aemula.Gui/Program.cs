@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Aemula.Consoles.Nes;
+using Aemula.Systems.Atari2600;
+using Aemula.Systems.Chip8;
 using Aemula.UI;
 using ImGuiNET;
 using Veldrid;
@@ -11,6 +14,13 @@ namespace Aemula.Gui
 {
     public static class Program
     {
+        private static readonly Dictionary<string, Func<EmulatedSystem>> Systems = new Dictionary<string, Func<EmulatedSystem>>
+        {
+            { "atari2600", () => new Atari2600() },
+            { "chip8", () => new Chip8() },
+            { "nes", () => new Nes() }
+        };
+
         public static void Main(string[] args)
         {
             VeldridStartup.CreateWindowAndGraphicsDevice(
@@ -42,9 +52,18 @@ namespace Aemula.Gui
 
             var lastTime = stopwatch.Elapsed;
 
-            var nesEmulator = new NesEmulator();
+            var systemArg = args[0];
+            var system = Systems[systemArg]();
 
-            nesEmulator.Initialize(graphicsDevice, imGuiRenderer);
+            system.LoadProgram(args[1]);
+
+            var emulator = new Emulator(system);
+
+            var debuggerWindows = emulator.CreateDebuggerWindows().ToArray();
+            foreach (var debuggerWindow in debuggerWindows)
+            {
+                debuggerWindow.CreateGraphicsResources(graphicsDevice, imGuiRenderer);
+            }
 
             while (windowOpen)
             {
@@ -56,9 +75,16 @@ namespace Aemula.Gui
 
                 var emulatorTime = new EmulatorTime(stopwatch.Elapsed, deltaTimeSpan);
 
-                nesEmulator.Update(emulatorTime);
+                emulator.Update(emulatorTime);
 
-                nesEmulator.Draw(emulatorTime);
+                DrawMainMenu(system, debuggerWindows);
+
+                emulator.Draw(emulatorTime);
+
+                foreach (var debuggerWindow in debuggerWindows)
+                {
+                    debuggerWindow.Draw(emulatorTime);
+                }
 
                 commandList.Begin();
                 commandList.SetFramebuffer(graphicsDevice.SwapchainFramebuffer);
@@ -79,71 +105,26 @@ namespace Aemula.Gui
             graphicsDevice.Dispose();
         }
 
-        private sealed class NesEmulator
+        private static void DrawMainMenu(EmulatedSystem system, DebuggerWindow[] debuggerWindows)
         {
-            private readonly Nes _nes;
-            private readonly DebuggerWindow[] _debuggerWindows;
-
-            public NesEmulator()
+            if (ImGui.BeginMainMenuBar())
             {
-                _nes = new Nes();
-                _nes.Reset();
-
-                _debuggerWindows = _nes.CreateDebuggerWindows().ToArray();
-            }
-
-            public void Initialize(GraphicsDevice graphicsDevice, ImGuiRenderer renderer)
-            {
-                foreach (var debuggerWindow in _debuggerWindows)
+                if (ImGui.BeginMenu("Windows"))
                 {
-                    debuggerWindow.CreateGraphicsResources(graphicsDevice, renderer);
-                }
-            }
-
-            public void Update(EmulatorTime time)
-            {
-                _nes.Update(time.TotalTime);
-            }
-
-            public void Draw(EmulatorTime time)
-            {
-                if (ImGui.BeginMainMenuBar())
-                {
-                    if (ImGui.BeginMenu("File"))
+                    foreach (var debuggerWindow in debuggerWindows)
                     {
-                        if (ImGui.MenuItem("Open .nes..."))
+                        if (ImGui.MenuItem(debuggerWindow.DisplayName, null, debuggerWindow.IsVisible, true))
                         {
-                            // TODO
-                            var cartridge = Cartridge.FromFile(@"../../../../Aemula.Chips.Mos6502.Tests/Assets/nestest.nes");
-                            _nes.InsertCartridge(cartridge);
-                            _nes.Reset();
-                        }
+                            debuggerWindow.IsVisible = true;
 
-                        ImGui.EndMenu();
+                            ImGui.SetWindowFocus(debuggerWindow.Name);
+                        }
                     }
 
-                    if (ImGui.BeginMenu("Windows"))
-                    {
-                        foreach (var debuggerWindow in _debuggerWindows)
-                        {
-                            if (ImGui.MenuItem(debuggerWindow.DisplayName, null, debuggerWindow.IsVisible, true))
-                            {
-                                debuggerWindow.IsVisible = true;
-
-                                ImGui.SetWindowFocus(debuggerWindow.Name);
-                            }
-                        }
-
-                        ImGui.EndMenu();
-                    }
-
-                    ImGui.EndMainMenuBar();
+                    ImGui.EndMenu();
                 }
 
-                foreach (var debuggerWindow in _debuggerWindows)
-                {
-                    debuggerWindow.Draw(time);
-                }
+                ImGui.EndMainMenuBar();
             }
         }
     }

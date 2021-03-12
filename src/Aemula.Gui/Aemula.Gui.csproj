@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Aemula.Consoles.Nes\Aemula.Consoles.Nes.csproj" />
+    <ProjectReference Include="..\Aemula.Systems.Atari2600\Aemula.Systems.Atari2600.csproj" />
+    <ProjectReference Include="..\Aemula.Systems.Chip8\Aemula.Systems.Chip8.csproj" />
   </ItemGroup>
 
 </Project>

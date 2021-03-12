@@ -5,7 +5,7 @@ using Aemula.UI;
 
 namespace Aemula.Chips.Mos6502
 {
-    public sealed partial class Mos6502
+    public partial class Mos6502
     {
         public Mos6502Pins Pins;
 

@@ -1,20 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace Aemula
+﻿namespace Aemula
 {
-    public interface IDisassemblable
-    {
-        event EventHandler ProgramLoaded;
-
-        ushort LastPC { get; }
-
-        SortedDictionary<ushort, DisassembledInstruction> Disassemble();
-    }
-
     public readonly struct DisassembledInstruction
     {
-        public readonly byte Opcode;
+        public readonly ushort Opcode;
         public readonly ushort AddressNumeric;
         public readonly string Address;
         public readonly byte InstructionSizeInBytes;
@@ -24,7 +12,7 @@ namespace Aemula
         public readonly ushort? Next1;
 
         public DisassembledInstruction(
-            byte opcode,
+            ushort opcode,
             ushort addressNumeric,
             string address, 
             byte instructionSizeInBytes, 

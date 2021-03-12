@@ -7,21 +7,21 @@ namespace Aemula.UI
 {
     public sealed class DisassemblyWindow : DebuggerWindow
     {
-        private readonly IDisassemblable _system;
+        private readonly Emulator _emulator;
         private DisassembledInstruction[] _disassembly;
 
         private bool _forceScroll;
 
         public override string DisplayName => "Disassembly";
 
-        public DisassemblyWindow(IDisassemblable system)
+        public DisassemblyWindow(Emulator emulator)
         {
-            _system = system;
+            _emulator = emulator;
 
-            system.ProgramLoaded += (sender, e) =>
+            emulator.System.ProgramLoaded += (sender, e) =>
             {
                 // TODO: Slow...
-                _disassembly = _system.Disassemble().Values.ToArray();
+                _disassembly = emulator.System.Disassemble().Values.ToArray();
             };
         }
 
@@ -29,9 +29,33 @@ namespace Aemula.UI
         {
             ImGui.ShowDemoWindow();
 
-            if (ImGui.Button("Step Instruction"))
+            if (_emulator.Running)
             {
+                if (ImGui.Button("Break"))
+                {
+                    _emulator.Running = false;
+                }
+            }
+            else
+            {
+                if (ImGui.Button("Continue"))
+                {
+                    _emulator.Running = true;
+                }
 
+                ImGui.SameLine();
+
+                if (ImGui.Button("Step Instruction"))
+                {
+                    _emulator.System.StepInstruction();
+                }
+
+                ImGui.SameLine();
+
+                if (ImGui.Button("Step CPU Cycle"))
+                {
+                    _emulator.System.StepCpuCycle();
+                }
             }
 
             ImGui.Separator();
@@ -42,7 +66,7 @@ namespace Aemula.UI
 
                 var lineHeight = ImGui.GetTextLineHeight();
 
-                var lastPC = _system.LastPC;
+                var lastPC = _emulator.System.LastPC;
 
                 if (_forceScroll)
                 {

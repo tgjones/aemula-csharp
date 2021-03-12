@@ -9,20 +9,18 @@ using Aemula.UI;
 
 namespace Aemula.Consoles.Nes
 {
-    public sealed class Nes : EmulatedSystem, IDisassemblable
+    public sealed class Nes : EmulatedSystem
     {
         private const int CpuFrequency = 1789773;
         //private const int CpuFrequency = 20;
-        private static readonly TimeSpan TimePerCpuTick = TimeSpan.FromSeconds(1.0f / CpuFrequency);
+        private static readonly double ClocksPerMillisecond = CpuFrequency / 1000.0;
 
         private readonly byte[] _ram;
         private readonly byte[] _vram;
 
-        private ushort _lastPC;
-
-        private TimeSpan _nextUpdateTime = TimeSpan.Zero;
-
         private Cartridge _cartridge;
+
+        private ushort _lastPC;
 
         public readonly Ricoh2A03 Cpu;
 
@@ -38,18 +36,38 @@ namespace Aemula.Consoles.Nes
             _vram = new byte[0x0800];
         }
 
-        public void Update(TimeSpan time)
+        public override void RunForDuration(TimeSpan duration)
         {
-            if (_nextUpdateTime == TimeSpan.Zero)
-            {
-                _nextUpdateTime = time;
-            }
+            var clocks = (int)Math.Round(ClocksPerMillisecond * duration.TotalMilliseconds);
 
-            while (time > _nextUpdateTime)
+            for (var i = 0; i < clocks; i++)
             {
                 Tick();
-                _nextUpdateTime += TimePerCpuTick;
             }
+        }
+
+        public override void StepInstruction()
+        {
+            ref readonly var pins = ref Cpu.CpuCore.Pins;
+
+            var lastRdy = pins.Rdy;
+
+            while (true)
+            {
+                Tick();
+
+                if ((pins.Sync || lastRdy) && !pins.Rdy)
+                {
+                    break;
+                }
+
+                lastRdy = pins.Rdy;
+            }
+        }
+
+        public override void StepCpuCycle()
+        {
+            Tick();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -102,6 +120,7 @@ namespace Aemula.Consoles.Nes
                     ppuPins.CpuAddress = (byte)(address & 0x7);
                     ppuPins.CpuData = cpuPins.Data;
                     Ppu.CpuCycle();
+                    cpuPins.Data = ppuPins.CpuData;
 
                     // Now handle reads / writes on PPU data bus.
                     var pa13 = (ppuPins.PpuAddress >> 13) & 1;
@@ -148,11 +167,9 @@ namespace Aemula.Consoles.Nes
             }
         }
 
-        public event EventHandler ProgramLoaded;
+        public override ushort LastPC => _lastPC;
 
-        ushort IDisassemblable.LastPC => _lastPC;
-
-        SortedDictionary<ushort, DisassembledInstruction> IDisassemblable.Disassemble()
+        public override SortedDictionary<ushort, DisassembledInstruction> Disassemble()
         {
             return Mos6502.Disassemble(ReadByteDebug);
         }
@@ -186,11 +203,19 @@ namespace Aemula.Consoles.Nes
             Ppu.Cycle();
         }
 
-        public void InsertCartridge(Cartridge cartridge)
+        public override void LoadProgram(string filePath)
+        {
+            var cartridge = Cartridge.FromFile(filePath);
+            InsertCartridge(cartridge);
+
+            Reset();
+        }
+
+        private void InsertCartridge(Cartridge cartridge)
         {
             _cartridge = cartridge;
 
-            ProgramLoaded?.Invoke(this, EventArgs.Empty);
+            RaiseProgramLoaded();
         }
 
         public override void Reset()
@@ -216,7 +241,6 @@ namespace Aemula.Consoles.Nes
                 yield return debuggerWindow;
             }
 
-            yield return new DisassemblyWindow(this);
             yield return new PatternTableWindow(this);
         }
     }
