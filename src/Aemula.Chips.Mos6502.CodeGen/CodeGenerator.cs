@@ -193,7 +193,6 @@ namespace Aemula.Chips.Mos6502.CodeGen
             sb.AppendLine("    }");
             sb.AppendLine("}");
 
-            System.IO.File.WriteAllText(@"C:\Users\Tim\Documents\GitHub\aemula-csharp\src\Aemula.Chips.Mos6502\obj\Mos6502.Disassembler.generated.cs", sb.ToString());
             context.AddSource("Mos6502.Disassembler.generated.cs", sb.ToString());
         }
 
@@ -686,8 +685,8 @@ namespace Aemula.Chips.Mos6502.CodeGen
                             "{",
                             "    pins.RW = false;",
                             "    _ad = (_brkFlags & BrkFlags.Nmi) != 0",
-                            "        ? 0xFFFA",
-                            "        : 0xFFFE;",
+                            "        ? (ushort)0xFFFA",
+                            "        : (ushort)0xFFFE;",
                             "}");
                         Add("pins.Address = _ad++;", "P.I = true;", "_brkFlags = BrkFlags.None;");
                         Add("pins.Address = _ad;", "_ad = pins.Data;");

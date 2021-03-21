@@ -278,8 +278,8 @@ namespace Aemula.Chips.Ricoh2C02
         private void IncrementPpuAddress()
         {
             _ppuAddress += (_ppuCtrlRegister.VRamAddressIncrementMode == VRamAddressIncrementMode.Add32)
-                ? 32
-                : 1;
+                ? (ushort)32
+                : (ushort)1;
         }
 
         private byte ReadPaletteMemory(ushort address)
