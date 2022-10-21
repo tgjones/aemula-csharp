@@ -1,3 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
+  <ItemGroup>
+    <ProjectReference Include="..\Aemula\Aemula.csproj" />
+  </ItemGroup>
 </Project>

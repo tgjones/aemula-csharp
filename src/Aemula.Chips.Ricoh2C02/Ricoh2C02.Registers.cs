@@ -2,61 +2,125 @@
 {
     partial class Ricoh2C02
     {
-        private struct PpuCtrlRegister
+        internal struct PpuCtrlRegister
         {
             public PackedByte Data;
 
-            public byte NameTableX => Data.Get(0, 1);
+            public byte NameTableX
+            {
+                get => Data.Get(0, 1);
+                set => Data.Set(0, 1, value);
+            }
 
-            public byte NameTableY => Data.Get(1, 1);
+            public byte NameTableY
+            {
+                get => Data.Get(1, 1);
+                set => Data.Set(1, 1, value);
+            }
 
-            public VRamAddressIncrementMode VRamAddressIncrementMode => (VRamAddressIncrementMode)Data.Get(2, 1);
+            public VRamAddressIncrementMode VRamAddressIncrementMode
+            {
+                get => (VRamAddressIncrementMode)Data.Get(2, 1);
+                set => Data.Set(2, 1, (byte)value);
+            }
 
-            public byte SpritePatternTableAddress => Data.Get(3, 1);
+            public byte SpritePatternTableAddress
+            {
+                get => Data.Get(3, 1);
+                set => Data.Set(3, 1, value);
+            }
 
-            public byte BackgroundPatternTableAddress => Data.Get(4, 1);
+            public byte BackgroundPatternTableAddress
+            {
+                get => Data.Get(4, 1);
+                set => Data.Set(4, 1, value);
+            }
 
-            public SpriteSize SpriteSize => (SpriteSize)Data.Get(5, 1);
+            public SpriteSize SpriteSize
+            {
+                get => (SpriteSize)Data.Get(5, 1);
+                set => Data.Set(5, 1, (byte)value);
+            }
 
-            public bool SlaveMode => Data.GetBit(6);
+            public bool SlaveMode
+            {
+                get => Data.GetBit(6);
+                set => Data.SetBit(6, value);
+            }
 
-            public bool EnableNmi => Data.GetBit(7);
+            public bool EnableNmi
+            {
+                get => Data.GetBit(7);
+                set => Data.SetBit(7, value);
+            }
         }
 
-        private enum VRamAddressIncrementMode
+        internal enum VRamAddressIncrementMode
         {
             Add1,
             Add32,
         }
 
-        private enum SpriteSize
+        internal enum SpriteSize
         {
             Size8x8,
             Size8x16,
         }
 
-        private struct PpuMaskRegister
+        internal struct PpuMaskRegister
         {
             public PackedByte Data;
 
-            public bool Grayscale => Data.GetBit(0);
+            public bool Grayscale
+            {
+                get => Data.GetBit(0);
+                set => Data.SetBit(0, value);
+            }
 
-            public bool RenderBackgroundLeft => Data.GetBit(1);
+            public bool RenderBackgroundLeft
+            {
+                get => Data.GetBit(1);
+                set => Data.SetBit(1, value);
+            }
 
-            public bool RenderSpritesLeft => Data.GetBit(2);
+            public bool RenderSpritesLeft
+            {
+                get => Data.GetBit(2);
+                set => Data.SetBit(2, value);
+            }
 
-            public bool RenderBackground => Data.GetBit(3);
+            public bool RenderBackground
+            {
+                get => Data.GetBit(3);
+                set => Data.SetBit(3, value);
+            }
 
-            public bool RenderSprites => Data.GetBit(4);
+            public bool RenderSprites
+            {
+                get => Data.GetBit(4);
+                set => Data.SetBit(4, value);
+            }
 
-            public bool EmphasizeRed => Data.GetBit(5);
+            public bool EmphasizeRed
+            {
+                get => Data.GetBit(5);
+                set => Data.SetBit(5, value);
+            }
 
-            public bool EmphasizeGreen => Data.GetBit(6);
+            public bool EmphasizeGreen
+            {
+                get => Data.GetBit(6);
+                set => Data.SetBit(6, value);
+            }
 
-            public bool EmphasizeBlue => Data.GetBit(7);
+            public bool EmphasizeBlue
+            {
+                get => Data.GetBit(7);
+                set => Data.SetBit(7, value);
+            }
         }
 
-        private struct PpuStatusRegister
+        internal struct PpuStatusRegister
         {
             public PackedByte Data;
 
@@ -67,17 +131,20 @@
 
             public bool SpriteOverflow
             {
-                set => Data.Set(5, 1, (byte)(value ? 1 : 0));
+                get => Data.GetBit(5);
+                set => Data.SetBit(5, value);
             }
 
             public bool Sprite0Hit
             {
-                set => Data.Set(6, 1, (byte)(value ? 1 : 0));
+                get => Data.GetBit(6);
+                set => Data.SetBit(6, value);
             }
 
             public bool VBlankStarted
             {
-                set => Data.Set(7, 1, (byte)(value ? 1 : 0));
+                get => Data.GetBit(7);
+                set => Data.SetBit(7, value);
             }
         }
     }

@@ -2,9 +2,13 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
+using System.Runtime.InteropServices;
+using System.Text;
 using Aemula.Consoles.Nes;
 using Aemula.Systems.Atari2600;
 using Aemula.Systems.Chip8;
+using Aemula.Systems.SpaceInvaders;
 using Aemula.UI;
 using ImGuiNET;
 using Veldrid;
@@ -14,11 +18,12 @@ namespace Aemula.Gui
 {
     public static class Program
     {
-        private static readonly Dictionary<string, Func<EmulatedSystem>> Systems = new Dictionary<string, Func<EmulatedSystem>>
+        private static readonly Dictionary<string, Func<EmulatedSystem>> Systems = new()
         {
             { "atari2600", () => new Atari2600() },
             { "chip8", () => new Chip8() },
-            { "nes", () => new Nes() }
+            { "nes", () => new Nes() },
+            { "spaceinvaders", () => new SpaceInvadersSystem() },
         };
 
         public static void Main(string[] args)
@@ -55,15 +60,17 @@ namespace Aemula.Gui
             var systemArg = args[0];
             var system = Systems[systemArg]();
 
-            system.LoadProgram(args[1]);
-
-            var emulator = new Emulator(system);
-
-            var debuggerWindows = emulator.CreateDebuggerWindows().ToArray();
+            var debugger = system.CreateDebugger();
+            var debuggerWindows = debugger.CreateDebuggerWindows().ToArray();
             foreach (var debuggerWindow in debuggerWindows)
             {
                 debuggerWindow.CreateGraphicsResources(graphicsDevice, imGuiRenderer);
+                debuggerWindow.IsVisible = true;
             }
+
+            system.LoadProgram(args[1]);
+
+            ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
 
             while (windowOpen)
             {
@@ -75,11 +82,10 @@ namespace Aemula.Gui
 
                 var emulatorTime = new EmulatorTime(stopwatch.Elapsed, deltaTimeSpan);
 
-                emulator.Update(emulatorTime);
+                debugger.RunForDuration(deltaTimeSpan);
 
-                DrawMainMenu(system, debuggerWindows);
-
-                emulator.Draw(emulatorTime);
+                DrawWindow(debuggerWindows);
+                DrawMainMenu(debuggerWindows);
 
                 foreach (var debuggerWindow in debuggerWindows)
                 {
@@ -98,6 +104,11 @@ namespace Aemula.Gui
                 graphicsDevice.SwapBuffers();
             }
 
+            foreach (var debuggerWindow in debuggerWindows)
+            {
+                debuggerWindow.Dispose();
+            }
+
             stopwatch.Stop();
 
             commandList.Dispose();
@@ -105,7 +116,49 @@ namespace Aemula.Gui
             graphicsDevice.Dispose();
         }
 
-        private static void DrawMainMenu(EmulatedSystem system, DebuggerWindow[] debuggerWindows)
+        private static bool _firstTime = true;
+
+        private static unsafe void DrawWindow(DebuggerWindow[] windows)
+        {
+            const ImGuiDockNodeFlags dockSpaceFlags = ImGuiDockNodeFlags.PassthruCentralNode;
+
+            var viewport = ImGui.GetMainViewport();
+            var dockSpaceId = ImGui.DockSpaceOverViewport(viewport, dockSpaceFlags);
+
+            if (_firstTime)
+            {
+                _firstTime = false;
+
+                ImGuiExtra.DockBuilderRemoveNode(dockSpaceId);
+                ImGuiExtra.DockBuilderAddNode(dockSpaceId, dockSpaceFlags | ImGuiExtra.ImGuiDockNodeFlags_DockSpace);
+                ImGuiExtra.DockBuilderSetNodeSize(dockSpaceId, viewport.Size);
+
+                var dockIdLeft = ImGuiExtra.DockBuilderSplitNode(dockSpaceId, ImGuiDir.Left, 0.2f, out _, out dockSpaceId);
+                var dockIdRight = ImGuiExtra.DockBuilderSplitNode(dockSpaceId, ImGuiDir.Right, 0.4f, out _, out dockSpaceId);
+                var dockIdDown = ImGuiExtra.DockBuilderSplitNode(dockSpaceId, ImGuiDir.Down, 0.25f, out _, out dockSpaceId);
+
+                foreach (var window in windows)
+                {
+                    uint? dockId = window.PreferredPane switch
+                    {
+                        Pane.Left => dockIdLeft,
+                        Pane.Bottom => dockIdDown,
+                        Pane.Right => dockIdRight,
+                        _ => null,
+                    };
+                    if (dockId != null)
+                    {
+                        ImGuiExtra.DockBuilderDockWindow($"{window.DisplayName}##{window.Name}", dockId.Value);
+                    }
+                }
+
+                ImGuiExtra.DockBuilderFinish(dockSpaceId);
+            }
+
+            ImGui.End();
+        }
+
+        private static void DrawMainMenu(DebuggerWindow[] debuggerWindows)
         {
             if (ImGui.BeginMainMenuBar())
             {
@@ -127,5 +180,85 @@ namespace Aemula.Gui
                 ImGui.EndMainMenuBar();
             }
         }
+    }
+
+    public static class ImGuiExtra
+    {
+        public static unsafe void DockBuilderDockWindow(string window_name, uint node_id)
+        {
+            var windowNameByteCount = Encoding.UTF8.GetByteCount(window_name);
+            byte* windowNamePtr;
+            if (windowNameByteCount > 2048)
+            {
+                windowNamePtr = (byte*)Marshal.AllocHGlobal(windowNameByteCount);
+            }
+            else
+            {
+                byte* stackPtr = stackalloc byte[windowNameByteCount + 1];
+                windowNamePtr = stackPtr;
+            }
+
+            var windowNameSpan = new Span<byte>(windowNamePtr, windowNameByteCount + 1);
+            Encoding.UTF8.GetBytes(window_name, windowNameSpan);
+
+            ImGuiNativeExtra.igDockBuilderDockWindow(windowNamePtr, node_id);
+
+            if (windowNameByteCount > 2048)
+            {
+                Marshal.FreeHGlobal((IntPtr)windowNamePtr);
+            }
+        }
+
+        public static uint DockBuilderAddNode(uint id, ImGuiDockNodeFlags flags)
+        {
+            return ImGuiNativeExtra.igDockBuilderAddNode(id, flags);
+        }
+
+        public static void DockBuilderRemoveNode(uint id)
+        {
+            ImGuiNativeExtra.igDockBuilderRemoveNode(id);
+        }
+
+        public static void DockBuilderSetNodeSize(uint id, Vector2 size)
+        {
+            ImGuiNativeExtra.igDockBuilderSetNodeSize(id, size);
+        }
+
+        public static unsafe uint DockBuilderSplitNode(uint nodeId, ImGuiDir split_dir, float size_ratio_for_node_at_dir, out uint out_id_at_dir, out uint out_id_at_opposite_dir)
+        {
+            fixed (uint* out_id_at_dir_ptr = &out_id_at_dir)
+            fixed (uint* out_id_at_opposite_dir_ptr = &out_id_at_opposite_dir)
+            {
+                return ImGuiNativeExtra.igDockBuilderSplitNode(nodeId, split_dir, size_ratio_for_node_at_dir, out_id_at_dir_ptr, out_id_at_opposite_dir_ptr);
+            }
+        }
+
+        public static void DockBuilderFinish(uint id)
+        {
+            ImGuiNativeExtra.igDockBuilderFinish(id);
+        }
+
+        public const ImGuiDockNodeFlags ImGuiDockNodeFlags_DockSpace = (ImGuiDockNodeFlags)(1 << 10);
+    }
+
+    internal static class ImGuiNativeExtra
+    {
+        [DllImport("cimgui", CallingConvention = CallingConvention.Cdecl)]
+        public unsafe static extern void igDockBuilderDockWindow(byte* window_name, uint node_id);
+
+        [DllImport("cimgui", CallingConvention = CallingConvention.Cdecl)]
+        public unsafe static extern uint igDockBuilderAddNode(uint id, ImGuiDockNodeFlags flags);
+
+        [DllImport("cimgui", CallingConvention = CallingConvention.Cdecl)]
+        public unsafe static extern void igDockBuilderRemoveNode(uint id);
+
+        [DllImport("cimgui", CallingConvention = CallingConvention.Cdecl)]
+        public unsafe static extern void igDockBuilderSetNodeSize(uint id, Vector2 size);
+
+        [DllImport("cimgui", CallingConvention = CallingConvention.Cdecl)]
+        public unsafe static extern uint igDockBuilderSplitNode(uint node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, uint* out_id_at_dir, uint* out_id_at_opposite_dir);
+
+        [DllImport("cimgui", CallingConvention = CallingConvention.Cdecl)]
+        public unsafe static extern void igDockBuilderFinish(uint id);
     }
 }

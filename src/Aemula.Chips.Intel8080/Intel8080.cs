@@ -1,4 +1,7 @@
 ﻿using System;
+using Aemula.Chips.Intel8080.UI;
+using Aemula.UI;
+using System.Collections.Generic;
 
 namespace Aemula.Chips.Intel8080
 {
@@ -13,6 +16,7 @@ namespace Aemula.Chips.Intel8080
         private byte _tmp; // Temporary register
         private WZRegister _wz;
         private bool _condition; // Most-recently-evaluated condition
+        private bool _interruptLatch;
 
         // Registers
         public PCRegister PC;
@@ -28,6 +32,11 @@ namespace Aemula.Chips.Intel8080
         // Pins
         public Intel8080Pins Pins;
 
+        public MachineCycleType CurrentMachineCycle => _machineCycleType;
+        public State CurrentState => _state;
+        internal int CombinedMachineCycleTypeAndState => CombineMachineCycleTypeAndState(_machineCycleType, _state);
+        public bool InterruptLatch => _interruptLatch;
+
         public Intel8080()
         {
             SetNextCycle(MachineCycleType.Fetch);
@@ -40,10 +49,14 @@ namespace Aemula.Chips.Intel8080
             switch (machineCycleTypeAndState)
             {
                 case FetchT1:
-                    Pins.Data = StatusWordFetch;
+                    Pins.Data = _interruptLatch ? StatusWordInterruptAcknowledge : StatusWordFetch;
                     Pins.Sync = true;
                     Pins.Wr = true;
                     Pins.Address = PC.Value; // This will be overridden by some instructions like CALL and RET.
+                    if (_interruptLatch)
+                    {
+                        Pins.IntE = false;
+                    }
                     break;
 
                 case FetchT2:
@@ -51,10 +64,14 @@ namespace Aemula.Chips.Intel8080
                     Pins.Sync = false;
                     // TODO: Sample READY and HOLD pins
                     // TODO: Check for HALT instruction.
-                    PC.Value++;
+                    if (!_interruptLatch)
+                    {
+                        PC.Value++;
+                    }
                     break;
 
                 case FetchT3:
+                    _interruptLatch = false;
                     Pins.DBIn = false;
                     _ir = Pins.Data;
                     break;
@@ -122,6 +139,37 @@ namespace Aemula.Chips.Intel8080
                 case StackWriteT4:
                     Pins.Wr = true;
                     break;
+
+                case InputReadT1:
+                    Pins.Data = StatusWordInputRead;
+                    Pins.Sync = true;
+                    Pins.Wr = true;
+                    Pins.Address = _wz.Value;
+                    break;
+
+                case InputReadT2:
+                    Pins.Sync = false;
+                    Pins.DBIn = true;
+                    break;
+
+                case InputReadT3:
+                    Pins.DBIn = false;
+                    break;
+
+                case OutputWriteT1:
+                    Pins.Data = StatusWordOutputWrite;
+                    Pins.Sync = true;
+                    Pins.Wr = true;
+                    Pins.Address = _wz.Value;
+                    break;
+
+                case OutputWriteT2:
+                    Pins.Sync = false;
+                    break;
+
+                case OutputWriteT3:
+                    Pins.Wr = false;
+                    break;
             }
 
             switch (_state)
@@ -152,6 +200,13 @@ namespace Aemula.Chips.Intel8080
 
             if (machineCycleType == MachineCycleType.Fetch)
             {
+                // This means the current state is the last state of the last cycle of the current instruction.
+                // Time to check the interrupt pin.
+                if (Pins.Int && Pins.IntE)
+                {
+                    _interruptLatch = true;
+                }
+
                 _machineCycle = 1;
             }
             else
@@ -999,6 +1054,8 @@ namespace Aemula.Chips.Intel8080
                     {
                         case FetchT4:
                             _tmp = (byte)(GetRegister((_ir & 0x38) >> 3) + 1);
+                            Flags.AuxiliaryCarry = (_tmp & 0xF) == 0;
+                            SetParityZeroSignBits(_tmp);
                             break;
 
                         case FetchT5:
@@ -1022,6 +1079,8 @@ namespace Aemula.Chips.Intel8080
 
                         case MemoryReadT3:
                             _tmp = (byte)(Pins.Data + 1);
+                            Flags.AuxiliaryCarry = (_tmp & 0xF) == 0;
+                            SetParityZeroSignBits(_tmp);
                             SetNextCycle(MachineCycleType.MemoryWrite);
                             break;
 
@@ -1051,6 +1110,8 @@ namespace Aemula.Chips.Intel8080
                     {
                         case FetchT4:
                             _tmp = (byte)(GetRegister((_ir & 0x38) >> 3) - 1);
+                            Flags.AuxiliaryCarry = (_tmp & 0xF) != 0xF;
+                            SetParityZeroSignBits(_tmp);
                             break;
 
                         case FetchT5:
@@ -1074,6 +1135,8 @@ namespace Aemula.Chips.Intel8080
 
                         case MemoryReadT3:
                             _tmp = (byte)(Pins.Data - 1);
+                            Flags.AuxiliaryCarry = (_tmp & 0xF) != 0xF;
+                            SetParityZeroSignBits(_tmp);
                             SetNextCycle(MachineCycleType.MemoryWrite);
                             break;
 
@@ -1160,14 +1223,14 @@ namespace Aemula.Chips.Intel8080
                             switch (_machineCycle)
                             {
                                 case 2:
-                                    Flags.Carry = (_act + _tmp) > 0xFF;
                                     HL.L = (byte)(_act + _tmp);
+                                    Flags.Carry = (_act + _tmp) > 0xFF;
                                     SetNextCycle(MachineCycleType.Dad);
                                     break;
 
                                 case 3:
-                                    Flags.Carry = (_act + _tmp + (Flags.Carry ? 1 : 0)) > 0xFF;
                                     HL.H = (byte)(_act + _tmp + (Flags.Carry ? 1 : 0));
+                                    Flags.Carry = (_act + _tmp + (Flags.Carry ? 1 : 0)) > 0xFF;
                                     SetNextCycle(MachineCycleType.Fetch);
                                     break;
                             }
@@ -1602,7 +1665,7 @@ namespace Aemula.Chips.Intel8080
 
                         // This executes during the fetch of the next instruction.
                         case FetchT2:
-                            PC.Value = (ushort)(_wz.Value + 1);
+                            SetPCFromWZ();
                             break;
 
                         case FetchT4:
@@ -1657,11 +1720,12 @@ namespace Aemula.Chips.Intel8080
                         case FetchT2:
                             if (_condition)
                             {
-                                PC.Value = (ushort)(_wz.Value + 1);
+                                SetPCFromWZ();
                             }
                             break;
 
-                        case FetchT5:
+                        // Error in Intel docs, which say this has 5 FETCH states?
+                        case FetchT4:
                             JudgeCondition((_ir & 0x38) >> 3);
                             SetNextCycle(MachineCycleType.MemoryRead);
                             break;
@@ -1702,7 +1766,7 @@ namespace Aemula.Chips.Intel8080
 
                         // This executes during the fetch of the next instruction.
                         case FetchT2:
-                            PC.Value = (ushort)(_wz.Value + 1);
+                            SetPCFromWZ();
                             break;
 
                         case FetchT5:
@@ -1786,7 +1850,7 @@ namespace Aemula.Chips.Intel8080
                         case FetchT2:
                             if (_condition)
                             {
-                                PC.Value = (ushort)(_wz.Value + 1);
+                                SetPCFromWZ();
                             }
                             break;
 
@@ -1869,7 +1933,7 @@ namespace Aemula.Chips.Intel8080
 
                         // This executes during the fetch of the next instruction.
                         case FetchT2:
-                            PC.Value = (ushort)(_wz.Value + 1);
+                            SetPCFromWZ();
                             break;
 
                         case FetchT4:
@@ -1920,7 +1984,7 @@ namespace Aemula.Chips.Intel8080
                         case FetchT2:
                             if (_condition)
                             {
-                                PC.Value = (ushort)(_wz.Value + 1);
+                                SetPCFromWZ();
                             }
                             break;
 
@@ -1949,6 +2013,66 @@ namespace Aemula.Chips.Intel8080
 
                                 case 3:
                                     _wz.W = Pins.Data;
+                                    SetNextCycle(MachineCycleType.Fetch);
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+
+                // RST n
+                case 0xC7:
+                case 0xCF:
+                case 0xD7:
+                case 0xDF:
+                case 0xE7:
+                case 0xEF:
+                case 0xF7:
+                case 0xFF:
+                    switch (machineCycleTypeAndState)
+                    {
+                        // This executes during the fetch of the next instruction.
+                        case FetchT1:
+                            Pins.Address = _wz.Value;
+                            break;
+
+                        // This executes during the fetch of the next instruction.
+                        case FetchT2:
+                            SetPCFromWZ();
+                            break;
+
+                        case FetchT3:
+                            _wz.W = 0;
+                            break;
+
+                        case FetchT5:
+                            SP.Value--;
+                            SetNextCycle(MachineCycleType.StackWrite);
+                            break;
+
+                        case StackWriteT2:
+                            switch (_machineCycle)
+                            {
+                                case 2:
+                                    SP.Value--;
+                                    Pins.Data = PC.Hi;
+                                    break;
+
+                                case 3:
+                                    _wz.Z = (byte)(_ir & 0b111000);
+                                    Pins.Data = PC.Lo;
+                                    break;
+                            }
+                            break;
+
+                        case StackWriteT3:
+                            switch (_machineCycle)
+                            {
+                                case 2:
+                                    SetNextCycle(MachineCycleType.StackWrite);
+                                    break;
+
+                                case 3:
                                     SetNextCycle(MachineCycleType.Fetch);
                                     break;
                             }
@@ -2177,6 +2301,89 @@ namespace Aemula.Chips.Intel8080
                     }
                     break;
 
+                // OUT port
+                case 0xD3:
+                    switch (machineCycleTypeAndState)
+                    {
+                        case FetchT4:
+                            SetNextCycle(MachineCycleType.MemoryRead);
+                            break;
+
+                        case MemoryReadT1:
+                            Pins.Address = PC.Value;
+                            break;
+
+                        case MemoryReadT2:
+                            PC.Value++;
+                            break;
+
+                        case MemoryReadT3:
+                            _wz.W = Pins.Data;
+                            _wz.Z = Pins.Data;
+                            SetNextCycle(MachineCycleType.OutputWrite);
+                            break;
+
+                        case OutputWriteT2:
+                            Pins.Data = A;
+                            break;
+
+                        case OutputWriteT3:
+                            SetNextCycle(MachineCycleType.Fetch);
+                            break;
+                    }
+                    break;
+
+                // IN port
+                case 0xDB:
+                    switch (machineCycleTypeAndState)
+                    {
+                        case FetchT4:
+                            SetNextCycle(MachineCycleType.MemoryRead);
+                            break;
+
+                        case MemoryReadT1:
+                            Pins.Address = PC.Value;
+                            break;
+
+                        case MemoryReadT2:
+                            PC.Value++;
+                            break;
+
+                        case MemoryReadT3:
+                            _wz.W = Pins.Data;
+                            _wz.Z = Pins.Data;
+                            SetNextCycle(MachineCycleType.InputRead);
+                            break;
+
+                        case InputReadT3:
+                            A = Pins.Data;
+                            SetNextCycle(MachineCycleType.Fetch);
+                            break;
+                    }
+                    break;
+
+                // EI
+                case 0xFB:
+                    switch (machineCycleTypeAndState)
+                    {
+                        case FetchT4:
+                            Pins.IntE = true;
+                            SetNextCycle(MachineCycleType.Fetch);
+                            break;
+                    }
+                    break;
+
+                // DI
+                case 0xF3:
+                    switch (machineCycleTypeAndState)
+                    {
+                        case FetchT4:
+                            Pins.IntE = false;
+                            SetNextCycle(MachineCycleType.Fetch);
+                            break;
+                    }
+                    break;
+
                 // NOP
                 case 0x00:
                     switch (machineCycleTypeAndState)
@@ -2301,69 +2508,48 @@ namespace Aemula.Chips.Intel8080
             };
         }
 
+        private void DoAlu(
+            byte operand,
+            byte carryIn,
+            out byte result,
+            out bool carryOut)
+        {
+            var newValue = _act + carryIn + operand;
+
+            carryOut = newValue > byte.MaxValue;
+            Flags.AuxiliaryCarry = (_act & 0xF) + (operand & 0xF) + carryIn > 0xF;
+
+            result = (byte)newValue;
+
+            SetParityZeroSignBits(result);
+        }
+
         private void Add()
         {
-            var newValue = _act + _tmp;
-
-            Flags.Carry = newValue > byte.MaxValue;
-            Flags.AuxiliaryCarry = (_act & 0xF) + (_tmp & 0xF) > 0xF;
-
-            A = (byte)newValue;
-
-            SetParityZeroSignBits(A);
+            DoAlu(_tmp, 0, out A, out Flags.Carry);
         }
 
         private void Adc()
         {
-            var oldCarry = Flags.Carry ? 1 : 0;
-            var newValue = _act + oldCarry + _tmp;
-
-            Flags.Carry = newValue > byte.MaxValue;
-
-            Flags.AuxiliaryCarry = (_act & 0xF) + (_tmp & 0xF) + oldCarry > 0xF;
-
-            A = (byte)newValue;
-
-            SetParityZeroSignBits(A);
+            DoAlu(_tmp, (byte)(Flags.Carry ? 1 : 0), out A, out Flags.Carry);
         }
 
         private void Cmp()
         {
-            SubImpl();
+            DoAlu((byte)(~_tmp), 1, out _, out var carry);
+            Flags.Carry = !carry;
         }
 
         private void Sub()
         {
-            A = SubImpl();
-        }
-
-        private byte SubImpl()
-        {
-            Flags.Carry = (((_act - _tmp) >> 8) & 0x1) == 0x1;
-
-            Flags.AuxiliaryCarry = ((((_act & 0xF) - (_tmp & 0xF)) >> 4) & 0x1) == 0x1;
-
-            var newValue = (byte)(_act - _tmp);
-
-            SetParityZeroSignBits(newValue);
-
-            return newValue;
+            DoAlu((byte)(~_tmp), 1, out A, out var carry);
+            Flags.Carry = !carry;
         }
 
         private void Sbb()
         {
-            var oldCarry = (byte)(Flags.Carry ? 1 : 0);
-            var operand = (byte)(_tmp + oldCarry);
-
-            Flags.Carry = (((_act - operand) >> 8) & 0x1) == 0x1;
-
-            Flags.AuxiliaryCarry = ((((_act & 0xF) - (operand & 0xF)) >> 4) & 0x1) == 0x1;
-
-            var newValue = (byte)(_act - operand);
-
-            SetParityZeroSignBits(newValue);
-
-            A = newValue;
+            DoAlu((byte)(~_tmp), (byte)(Flags.Carry ? 0 : 1), out A, out var carry);
+            Flags.Carry = !carry;
         }
 
         private void Ana()
@@ -2402,20 +2588,23 @@ namespace Aemula.Chips.Intel8080
 
         private void Daa()
         {
-            if (Flags.AuxiliaryCarry || (A & 0xF) > 0x09)
+            byte adjustment = 0;
+
+            if (Flags.AuxiliaryCarry || (A & 0xF) > 9)
             {
-                Flags.AuxiliaryCarry = ((A & 0xF) + 0x06) >> 4 == 0x1;
-                A += 6;
+                adjustment = 6;
             }
 
-            if (Flags.Carry || (A & 0xF0) > 0x90)
+            if (Flags.Carry || A > 0x99)
             {
                 // Carry is only set, never reset.
-                Flags.Carry |= (A + 0x60) >> 8 == 0x1;
-                A += 0x60;
+                Flags.Carry = true;
+                adjustment |= 0x60;
             }
 
-            SetParityZeroSignBits(A);
+            _act = A;
+
+            DoAlu(adjustment, 0, out A, out _);
         }
 
         private void Rlc()
@@ -2448,12 +2637,18 @@ namespace Aemula.Chips.Intel8080
 
         private void SetParityZeroSignBits(byte result)
         {
-            // TODO: Use lookup table.
-            Flags.Parity = (System.Runtime.Intrinsics.X86.Popcnt.PopCount(result) % 2) == 0;
+            Flags.Parity = ParityValues[result];
 
             Flags.Zero = result == 0;
 
             Flags.Sign = (result & 0x80) != 0;
+        }
+
+        private void SetPCFromWZ()
+        {
+            // If this is an INTERRUPT machine cycle,
+            // prevent PC incrementing.
+            PC.Value = (ushort)(_wz.Value + (_interruptLatch ? 0 : 1));
         }
 
         public const byte StatusWordFetch = 0b10100010;
@@ -2467,7 +2662,7 @@ namespace Aemula.Chips.Intel8080
         public const byte StatusWordHaltAcknowledge = 0b10001010;
         public const byte StatusWordInterruptAcknowledgeWhileHalt = 0b00101011;
 
-        private enum MachineCycleType : byte
+        public enum MachineCycleType : byte
         {
             Fetch,
             MemoryRead,
@@ -2482,7 +2677,7 @@ namespace Aemula.Chips.Intel8080
             Dad, // Special cycle type for DAD instruction
         }
 
-        private enum State : byte
+        public enum State : byte
         {
             T1,
             T2,
@@ -2519,9 +2714,22 @@ namespace Aemula.Chips.Intel8080
         private const int DadT2 = ((byte)MachineCycleType.Dad << 8) | (byte)State.T2;
         private const int DadT3 = ((byte)MachineCycleType.Dad << 8) | (byte)State.T3;
 
+        private const int InputReadT1 = ((byte)MachineCycleType.InputRead << 8) | (byte)State.T1;
+        private const int InputReadT2 = ((byte)MachineCycleType.InputRead << 8) | (byte)State.T2;
+        private const int InputReadT3 = ((byte)MachineCycleType.InputRead << 8) | (byte)State.T3;
+
+        private const int OutputWriteT1 = ((byte)MachineCycleType.OutputWrite << 8) | (byte)State.T1;
+        private const int OutputWriteT2 = ((byte)MachineCycleType.OutputWrite << 8) | (byte)State.T2;
+        private const int OutputWriteT3 = ((byte)MachineCycleType.OutputWrite << 8) | (byte)State.T3;
+
         private static int CombineMachineCycleTypeAndState(MachineCycleType machineCycleType, State state)
         {
             return ((byte)machineCycleType << 8) | (byte)state;
+        }
+
+        public IEnumerable<DebuggerWindow> CreateDebuggerWindows()
+        {
+            yield return new CpuStateWindow(this);
         }
     }
 }

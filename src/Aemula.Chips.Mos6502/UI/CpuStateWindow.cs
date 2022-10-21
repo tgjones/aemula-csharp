@@ -9,6 +9,8 @@ namespace Aemula.Chips.Mos6502.UI
 
         public override string DisplayName => "MOS6502 CPU State";
 
+        public override Pane PreferredPane => Pane.Left;
+
         public CpuStateWindow(Mos6502 mos6502)
         {
             _mos6502 = mos6502;

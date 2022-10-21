@@ -2,7 +2,7 @@
 {
     partial class Chip8
     {
-        private const ushort ProgramStart = 0x200;
+        public const ushort ProgramStart = 0x200;
 
         private const int ScreenWidth = 64;
         private const int ScreenHeight = 32;

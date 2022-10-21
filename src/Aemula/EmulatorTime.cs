@@ -13,4 +13,12 @@ namespace Aemula
             ElapsedTime = elapsedTime;
         }
     }
+
+    public static class TimeSpanExtensions
+    {
+        public static uint ToSystemTicks(this TimeSpan duration, ulong cyclesPerSecond)
+        {
+            return (uint)Math.Round(cyclesPerSecond * duration.TotalSeconds);
+        }
+    }
 }

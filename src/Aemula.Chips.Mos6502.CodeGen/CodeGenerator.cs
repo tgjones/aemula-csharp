@@ -85,12 +85,14 @@ namespace Aemula.Chips.Mos6502.CodeGen
             var sb = new StringBuilder();
 
             sb.AppendLine("using System;");
+            sb.AppendLine("using System.Collections.Generic;");
+            sb.AppendLine("using Aemula.Debugging;");
             sb.AppendLine("");
             sb.AppendLine("namespace Aemula.Chips.Mos6502");
             sb.AppendLine("{");
             sb.AppendLine("    partial class Mos6502");
             sb.AppendLine("    {");
-            sb.AppendLine("        public static DisassembledInstruction DisassembleInstruction(ushort address, Func<ushort, byte> readMemory)");
+            sb.AppendLine("        public static DisassembledInstruction DisassembleInstruction(ushort address, Func<ushort, byte> readMemory, Dictionary<ushort, string> equates)");
             sb.AppendLine("        {");
             sb.AppendLine("            var opcode = readMemory(address);");
             sb.AppendLine("            ");
@@ -124,31 +126,31 @@ namespace Aemula.Chips.Mos6502.CodeGen
                         sb.AppendLine("                    var operandHi = readMemory((ushort)(address + 2));");
                         sb.AppendLine("                    var operand = (ushort)((operandHi << 8) | operandLo);");
                         rawBytes = "$\"{opcode:X2} {operandLo:X2} {operandHi:X2}\"";
-                        formattedOperand = $" {addressingModeDescription.OperandPrefix}${{operand:X4}}{addressingModeDescription.OperandSuffix}";
+                        formattedOperand = $" {addressingModeDescription.OperandPrefix}{{(equates.TryGetValue(operand, out var equate) ? equate : \"$\" + operand.ToString(\"X4\"))}}{addressingModeDescription.OperandSuffix}";
                         break;
 
                     default:
                         throw new InvalidOperationException($"Invalid number of operands: {addressingModeDescription.NumOperands}");
                 }
 
-                string next0, next1;
+                string next, jumpTarget;
                 switch (instruction.Mnemonic)
                 {
                     case "JAM":
-                        next0 = next1 = "null";
+                        next = jumpTarget = "null";
                         break;
 
                     case "JMP":
-                        next0 = (instruction.AddressingMode == AddressingMode.Absolute)
-                            ? "operand"
-                            : "(ushort)(readMemory(operand) | (readMemory((ushort)(operand + 1)) << 8))";
-                        next1 = "null";
+                        next = "null";
+                        jumpTarget = (instruction.AddressingMode == AddressingMode.Absolute)
+                            ? "new JumpTarget(JumpType.Jump, operand)"
+                            : "null";
                         break;
 
                     case "JSR":
                         // Include both the target subroutine address, and the next instruction after this one.
-                        next0 = $"(ushort)(address + {addressingModeDescription.NumOperands + 1})";
-                        next1 = "operand";
+                        next = $"(ushort)(address + {addressingModeDescription.NumOperands + 1})";
+                        jumpTarget = "new JumpTarget(JumpType.Call, operand)";
                         break;
 
                     case "BEQ":
@@ -159,18 +161,20 @@ namespace Aemula.Chips.Mos6502.CodeGen
                     case "BPL":
                     case "BVC":
                     case "BVS":
-                        next0 = $"(ushort)(address + {addressingModeDescription.NumOperands + 1})";
-                        next1 = $"(ushort)(address + 2 + (sbyte)operand)";
+                        next = $"(ushort)(address + {addressingModeDescription.NumOperands + 1})";
+                        jumpTarget = $"new JumpTarget(JumpType.Jump, (ushort)(address + 2 + (sbyte)operand))";
+                        formattedOperand = $" ${{((ushort)(address + 2 + (sbyte)operand)):X4}}";
                         break;
 
                     case "RTS":
+                    case "RTI":
                         // We will have already returned the actual "next" in the JSR instruction
-                        next0 = next1 = "null";
+                        next = jumpTarget = "null";
                         break;
 
                     default:
-                        next0 = $"(ushort)(address + {addressingModeDescription.NumOperands + 1})";
-                        next1 = "null";
+                        next = $"(ushort)(address + {addressingModeDescription.NumOperands + 1})";
+                        jumpTarget = "null";
                         break;
                 }
 
@@ -181,8 +185,8 @@ namespace Aemula.Chips.Mos6502.CodeGen
                 sb.AppendLine($"                        {addressingModeDescription.NumOperands + 1},");
                 sb.AppendLine($"                        {rawBytes},");
                 sb.AppendLine($"                        $\"{instruction.Mnemonic}{formattedOperand}\",");
-                sb.AppendLine($"                        {next0},");
-                sb.AppendLine($"                        {next1});");
+                sb.AppendLine($"                        {next},");
+                sb.AppendLine($"                        {jumpTarget});");
                 sb.AppendLine("                }");
 
                 sb.AppendLine("");
@@ -1109,10 +1113,14 @@ namespace Aemula.Chips.Mos6502.CodeGen
                     "}");
 
                 // Executed if branch was taken.
+                // For taken branches that cross a page boundary, shift IRQ and NMI counters
+                // to account for branch interrupt quirk.
                 Add("pins.Address = (ushort)((PC & 0xFF00) | (_ad & 0xFF));",
                     "if ((_ad & 0xFF00) == (PC & 0xFF00))",
                     "{",
                     "    PC = _ad;",
+                    "    _irqCounter >>= 1;",
+                    "    _nmiCounter >>= 1;",
                     "    FetchNextInstruction(ref pins);",
                     "}");
 

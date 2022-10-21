@@ -12,6 +12,8 @@ namespace Aemula.Chips.Ricoh2C02.UI
 
         public override string DisplayName => "NES PPU Palette";
 
+        public override Pane PreferredPane => Pane.Bottom;
+
         public PaletteWindow(Ricoh2C02 ricoh2C02)
         {
             _ricoh2C02 = ricoh2C02;

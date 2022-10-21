@@ -11,8 +11,7 @@ namespace Aemula.Systems.Atari2600
     public sealed class Atari2600 : EmulatedSystem
     {
         // 3.58 MHZ
-        private const double ClocksPerMs = 3580000.0 / 1000.0;
-        //const ClocksPerMs = 100000.0 / 1000.0;
+        public override ulong CyclesPerSecond => 3580000;
 
         private readonly Mos6507 _cpu;
         private readonly Mos6532 _riot;
@@ -42,14 +41,7 @@ namespace Aemula.Systems.Atari2600
             _cpu.Pins.Res = true;
         }
 
-        public override ushort LastPC => _lastPC;
-
-        public override SortedDictionary<ushort, DisassembledInstruction> Disassemble()
-        {
-            return Mos6502.Disassemble(ReadByteDebug);
-        }
-
-        private byte ReadByteDebug(ushort address)
+        internal byte ReadByteDebug(ushort address)
         {
             if ((address & 0x1000) != 0)
             {
@@ -78,17 +70,7 @@ namespace Aemula.Systems.Atari2600
             _cartridge = Cartridge.FromData(cartridgeData);
         }
 
-        public override void RunForDuration(TimeSpan duration)
-        {
-            var clocks = (int)Math.Round(ClocksPerMs * duration.TotalMilliseconds);
-
-            for (var i = 0; i < clocks; i++)
-            {
-                Tick();
-            }
-        }
-
-        private void Tick()
+        public override void Tick()
         {
             if (_tiaCycle == 0)
             {
@@ -169,33 +151,6 @@ namespace Aemula.Systems.Atari2600
             else
             {
                 // TODO: Write to cartridge?
-            }
-        }
-
-        public override void StepCpuCycle()
-        {
-            do
-            {
-                Tick();
-            } while (_tiaCycle != 0);
-        }
-
-        public override void StepInstruction()
-        {
-            ref readonly var pins = ref _cpu.Pins;
-
-            var lastRdy = pins.Rdy;
-
-            while (true)
-            {
-                Tick();
-
-                if ((pins.Sync || lastRdy) && !pins.Rdy)
-                {
-                    break;
-                }
-
-                lastRdy = pins.Rdy;
             }
         }
     }

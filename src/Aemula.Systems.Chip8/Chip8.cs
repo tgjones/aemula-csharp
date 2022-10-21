@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using Aemula.Debugging;
+using Aemula.Systems.Chip8.Debugging;
 
 namespace Aemula.Systems.Chip8
 {
@@ -14,8 +16,9 @@ namespace Aemula.Systems.Chip8
         private readonly Random _random;
         private readonly byte[] _randomBytes;
 
+        public ushort PC;
+
         private ushort _i;
-        private ushort _pc;
         private byte _sp;
 
         private byte _dt; // Delay timer
@@ -24,9 +27,9 @@ namespace Aemula.Systems.Chip8
         private bool _waitingForKeyPress;
         private byte _waitingForKeyPressRegister;
 
-        private bool _running;
+        private byte _cycle;
 
-        public override ushort LastPC => throw new NotImplementedException();
+        public override ulong CyclesPerSecond => 600;
 
         public Chip8()
         {
@@ -49,7 +52,7 @@ namespace Aemula.Systems.Chip8
             Array.Clear(_display, 0, _display.Length);
             Array.Clear(_keys, 0, _keys.Length);
             _i = 0;
-            _pc = ProgramStart;
+            PC = ProgramStart;
             _sp = 0;
             _dt = 0;
             _st = 0;
@@ -58,50 +61,12 @@ namespace Aemula.Systems.Chip8
 
             // Add sprite characters at start of memory.
             Array.Copy(SpriteCharacters, _memory, SpriteCharacters.Length);
-
-            _running = false;
         }
 
         public override void LoadProgram(string filePath)
         {
             var program = File.ReadAllBytes(filePath);
             Array.Copy(program, 0, _memory, ProgramStart, program.Length);
-        }
-
-        public override void RunForDuration(TimeSpan duration)
-        {
-            // We need to run at ~600Hz.
-            var numCycles = (int)Math.Round(duration.TotalSeconds * 600.0);
-            for (var i = 0; i < numCycles; i++)
-            {
-                Cycle();
-            }
-
-            UpdateTimers();
-        }
-
-        public override void StepInstruction()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void StepCpuCycle()
-        {
-            throw new NotImplementedException();
-        }
-
-        private void UpdateTimers()
-        {
-            if (_dt > 0)
-            {
-                _dt -= 1;
-            }
-
-            if (_st > 0)
-            {
-                // TODO: Play sound
-                _st -= 1;
-            }
         }
 
         public void SetKeyDown(byte key)
@@ -120,17 +85,45 @@ namespace Aemula.Systems.Chip8
             _keys[key] = false;
         }
 
-        private void Cycle()
+        public override void Tick()
+        {
+            DoCpuCycle();
+
+            _cycle++;
+
+            // The system is updated at 600Hz, but timers need to be updated at 60Hz.
+            if (_cycle == 10)
+            {
+                UpdateTimers();
+                _cycle = 0;
+            }
+        }
+
+        private void UpdateTimers()
+        {
+            if (_dt > 0)
+            {
+                _dt -= 1;
+            }
+
+            if (_st > 0)
+            {
+                // TODO: Play sound
+                _st -= 1;
+            }
+        }
+
+        private void DoCpuCycle()
         {
             if (_waitingForKeyPress)
             {
                 return;
             }
 
-            var kk = _memory[_pc + 1];
-            var opcode = (ushort)((_memory[_pc] << 8) | kk);
+            var kk = _memory[PC + 1];
+            var opcode = (ushort)((_memory[PC] << 8) | kk);
 
-            _pc += 2;
+            PC += 2;
 
             var x = (opcode & 0x0F00) >> 8;
             var y = (opcode & 0x00F0) >> 8;
@@ -149,28 +142,28 @@ namespace Aemula.Systems.Chip8
                         // RET - Return from a subroutine.
                         case 0x00EE:
                             _sp--;
-                            _pc = _stack[_sp];
+                            PC = _stack[_sp];
                             break;
                     }
                     break;
 
                 // 1nnn - JP addr - Jump to location nnn.
                 case 0x1000:
-                    _pc = nnn;
+                    PC = nnn;
                     break;
 
                 // 2nnn - CALL addr - Call subroutine at nnn.
                 case 0x2000:
-                    _stack[_sp] = _pc;
+                    _stack[_sp] = PC;
                     _sp++;
-                    _pc = nnn;
+                    PC = nnn;
                     break;
 
                 // 3xkk - SE Vx, byte - Skip next instruction if Vx = kk.
                 case 0x3000:
                     if (_v[x] == kk)
                     {
-                        _pc += 2;
+                        PC += 2;
                     }
                     break;
 
@@ -178,7 +171,7 @@ namespace Aemula.Systems.Chip8
                 case 0x4000:
                     if (_v[x] != kk)
                     {
-                        _pc += 2;
+                        PC += 2;
                     }
                     break;
 
@@ -186,7 +179,7 @@ namespace Aemula.Systems.Chip8
                 case 0x5000:
                     if (_v[x] == _v[y])
                     {
-                        _pc += 2;
+                        PC += 2;
                     }
                     break;
 
@@ -254,7 +247,7 @@ namespace Aemula.Systems.Chip8
                 case 0x9000:
                     if (_v[x] != _v[y])
                     {
-                        _pc += 2;
+                        PC += 2;
                     }
                     break;
 
@@ -265,7 +258,7 @@ namespace Aemula.Systems.Chip8
 
                 // Bnnn - JP V0, addr - Jump to location nnn + V0.
                 case 0xB000:
-                    _pc = (ushort)(nnn + _v[0]);
+                    PC = (ushort)(nnn + _v[0]);
                     break;
 
                 // Cxkk - RND Vx, byte - Set Vx = random byte AND kk.
@@ -279,7 +272,6 @@ namespace Aemula.Systems.Chip8
                 case 0xD000:
                     var height = opcode & 0x000F;
                     var vx = _v[x];
-                    var vy = _v[y];
                     _v[0xF] = 0;
                     for (var pixelY = 0; pixelY < height; pixelY++)
                     {
@@ -309,7 +301,7 @@ namespace Aemula.Systems.Chip8
                         case 0x009E:
                             if (_keys[_v[x]])
                             {
-                                _pc += 2;
+                                PC += 2;
                             }
                             break;
 
@@ -317,7 +309,7 @@ namespace Aemula.Systems.Chip8
                         case 0x00A1:
                             if (!_keys[_v[x]])
                             {
-                                _pc += 2;
+                                PC += 2;
                             }
                             break;
                     }
@@ -404,6 +396,15 @@ namespace Aemula.Systems.Chip8
         private static (byte result, byte vf) OverflowingShl(byte x)
         {
             return ((byte)(x << 1), ((x & 0x80) != 0) ? One : Zero);
+        }
+
+        private byte ReadByteDebug(ushort address) => _memory[address];
+
+        private void WriteByteDebug(ushort address, byte value) => _memory[address] = value;
+
+        public override Debugger CreateDebugger()
+        {
+            return new Chip8Debugger(this, new DebuggerMemoryCallbacks(ReadByteDebug, WriteByteDebug));
         }
     }
 }

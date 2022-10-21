@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.28527.54
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31521.260
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Computers.BbcMicro", "Aemula.Computers.BbcMicro\Aemula.Computers.BbcMicro.csproj", "{C51C2B1B-8F91-4D9F-A414-86B197AC2E07}"
 EndProject
@@ -37,9 +37,17 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Systems.Atari2600", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Systems.Chip8", "Aemula.Systems.Chip8\Aemula.Systems.Chip8.csproj", "{6704DFB6-4133-4BF7-AF4D-5DCE3917EA74}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aemula.Chips.Intel8080", "Aemula.Chips.Intel8080\Aemula.Chips.Intel8080.csproj", "{1A5839F5-6676-482D-BB64-309A5C75B371}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Chips.Intel8080", "Aemula.Chips.Intel8080\Aemula.Chips.Intel8080.csproj", "{1A5839F5-6676-482D-BB64-309A5C75B371}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aemula.Chips.Intel8080.Tests", "Aemula.Chips.Intel8080.Tests\Aemula.Chips.Intel8080.Tests.csproj", "{9F95B5E0-960D-4CCB-9DC9-4CAC6D5ADB00}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Chips.Intel8080.Tests", "Aemula.Chips.Intel8080.Tests\Aemula.Chips.Intel8080.Tests.csproj", "{9F95B5E0-960D-4CCB-9DC9-4CAC6D5ADB00}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Systems.SpaceInvaders", "Aemula.Systems.SpaceInvaders\Aemula.Systems.SpaceInvaders.csproj", "{F12F9812-9B18-4205-8BDD-3CA7F8ADDDE9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Systems.Chip8.Tests", "Aemula.Systems.Chip8.Tests\Aemula.Systems.Chip8.Tests.csproj", "{D79271C1-5AAE-4BF9-AEC9-8AEB1D319D1A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aemula.Chips.MB14241", "Aemula.Chips.MB14241\Aemula.Chips.MB14241.csproj", "{EE46B930-603F-406F-A353-6C88BC30E6A4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aemula.Chips.MB14241.Tests", "Aemula.Chips.MB14241.Tests\Aemula.Chips.MB14241.Tests.csproj", "{23F7FD05-0AFF-45BE-BA56-26CD7E25A443}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -123,6 +131,22 @@ Global
 		{9F95B5E0-960D-4CCB-9DC9-4CAC6D5ADB00}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F95B5E0-960D-4CCB-9DC9-4CAC6D5ADB00}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F95B5E0-960D-4CCB-9DC9-4CAC6D5ADB00}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F12F9812-9B18-4205-8BDD-3CA7F8ADDDE9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F12F9812-9B18-4205-8BDD-3CA7F8ADDDE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F12F9812-9B18-4205-8BDD-3CA7F8ADDDE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F12F9812-9B18-4205-8BDD-3CA7F8ADDDE9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D79271C1-5AAE-4BF9-AEC9-8AEB1D319D1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D79271C1-5AAE-4BF9-AEC9-8AEB1D319D1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D79271C1-5AAE-4BF9-AEC9-8AEB1D319D1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D79271C1-5AAE-4BF9-AEC9-8AEB1D319D1A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE46B930-603F-406F-A353-6C88BC30E6A4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE46B930-603F-406F-A353-6C88BC30E6A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE46B930-603F-406F-A353-6C88BC30E6A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE46B930-603F-406F-A353-6C88BC30E6A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{23F7FD05-0AFF-45BE-BA56-26CD7E25A443}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{23F7FD05-0AFF-45BE-BA56-26CD7E25A443}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{23F7FD05-0AFF-45BE-BA56-26CD7E25A443}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{23F7FD05-0AFF-45BE-BA56-26CD7E25A443}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

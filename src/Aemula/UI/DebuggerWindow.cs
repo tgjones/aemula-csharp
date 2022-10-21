@@ -1,10 +1,11 @@
-﻿using System.Numerics;
+﻿using System;
+using System.Numerics;
 using ImGuiNET;
 using Veldrid;
 
 namespace Aemula.UI
 {
-    public abstract class DebuggerWindow
+    public abstract class DebuggerWindow : IDisposable
     {
         private bool _isVisible;
 
@@ -19,6 +20,8 @@ namespace Aemula.UI
         public string Name => DisplayName;
 
         public abstract string DisplayName { get; }
+
+        public virtual Pane PreferredPane => Pane.None;
 
         public virtual void CreateGraphicsResources(GraphicsDevice graphicsDevice, ImGuiRenderer renderer) { }
 
@@ -39,5 +42,7 @@ namespace Aemula.UI
         }
 
         protected abstract void DrawOverride(EmulatorTime time);
+
+        public virtual void Dispose() { }
     }
 }

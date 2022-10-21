@@ -27,6 +27,8 @@ namespace Aemula.Consoles.Nes.UI
 
         public override string DisplayName => "NES PPU Pattern Table";
 
+        public override Pane PreferredPane => Pane.Bottom;
+
         public PatternTableWindow(Nes nes)
         {
             _nes = nes;

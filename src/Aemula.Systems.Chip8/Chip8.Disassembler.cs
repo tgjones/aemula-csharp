@@ -1,19 +1,29 @@
-﻿using System.Collections.Generic;
+﻿using Aemula.Debugging;
 
 namespace Aemula.Systems.Chip8
 {
     partial class Chip8
     {
-        public override SortedDictionary<ushort, DisassembledInstruction> Disassemble()
+        internal static DisassembledInstruction Disassemble(
+            ushort address,
+            DebuggerMemoryCallbacks memoryCallbacks)
         {
-            throw new System.NotImplementedException();
-        }
-
-        private DisassembledInstruction Disassemble(ushort address)
-        {
-            var opcodeHi = _memory[address + 0];
-            var opcodeLo = _memory[address + 1];
+            var opcodeHi = memoryCallbacks.Read((ushort)(address + 0));
+            var opcodeLo = memoryCallbacks.Read((ushort)(address + 1));
             var opcode = (ushort)((opcodeHi << 8) | opcodeLo);
+
+            ushort? next = opcode != 0x00EE && opcode != 0x100
+                ? (ushort)(address + 2)
+                : null;
+
+            JumpTarget? jumpTarget = (opcode & 0xF000) switch
+            {
+                0x1000 => new JumpTarget(JumpType.Jump, (ushort)(opcode & 0x0FFF)),
+                0x2000 => new JumpTarget(JumpType.Call, (ushort)(opcode & 0x0FFF)),
+                // Ignore indirect jumps.
+                // 0xB000 => (ushort)((opcode & 0x0FFF) + _v[0]),
+                _ => null,
+            };
 
             return new DisassembledInstruction(
                 opcode,
@@ -22,8 +32,8 @@ namespace Aemula.Systems.Chip8
                 2,
                 $"{opcodeHi:X2} {opcodeLo:X2}",
                 DisassembleImpl(opcode),
-                null,  // TODO
-                null); // TODO
+                next,
+                jumpTarget);
         }
 
         private static string DisassembleImpl(ushort opcode)

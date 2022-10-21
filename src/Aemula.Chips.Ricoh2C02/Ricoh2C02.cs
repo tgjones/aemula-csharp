@@ -28,20 +28,21 @@ namespace Aemula.Chips.Ricoh2C02
 
         private ushort _ppuAddress;
 
+        private byte _ppuReadBuffer;
+        private VramReadTarget _vramReadTarget;
+
+        // Set in response to the CPU reading from or writing to VRAM.
+        // Used in the next PPU cycle to trigger the actual reads or writes.
+        private VramRequestState _vramRequestState;
+        private ushort _vramRequestAddress;
+        private byte _vramRequestData;
+
         private byte _currentLatchData;
 
-        private ushort _currentScanline;
-        private ushort _currentDot;
-
-
-
-        // Registers
-        private PpuCtrlRegister _ppuCtrlRegister;
-        private PpuMaskRegister _ppuMaskRegister;
-        private PpuStatusRegister _ppuStatusRegister;
-
-        // Current VRAM address (15 bits)
-        private ushort _v;
+        private ushort _patternShiftRegister1;
+        private ushort _patternShiftRegister2;
+        private byte _paletteShiftRegister1;
+        private byte _paletteShiftRegister2;
 
         // Temporary VRAM address (15 bits)
         private ushort _t;
@@ -51,6 +52,16 @@ namespace Aemula.Chips.Ricoh2C02
 
         // Latch around two-bytes writes into 0x2005 and 0x2006
         private bool _firstWrite = true;
+
+        // Registers
+        internal PpuCtrlRegister CtrlRegister;
+        internal PpuMaskRegister MaskRegister;
+        internal PpuStatusRegister StatusRegister;
+
+        internal ulong Cycles;
+        internal ulong Frames;
+        internal ulong CurrentScanline;
+        internal ulong CurrentDot;
 
         public Ricoh2C02Pins Pins;
 
@@ -136,6 +147,35 @@ namespace Aemula.Chips.Ricoh2C02
         {
             // TODO
 
+            // Handle VRAM reads / writes.
+            switch (_vramRequestState)
+            {
+                case VramRequestState.SetupAddressForRead:
+                    SetupVramRequest(_vramRequestAddress);
+                    _vramRequestState = VramRequestState.ReadData;
+                    break;
+
+                case VramRequestState.SetupAddressForWrite:
+                    SetupVramRequest(_vramRequestAddress);
+                    _vramRequestState = VramRequestState.WriteData;
+                    break;
+
+                case VramRequestState.ReadData:
+                    SetupVramRequestRead(VramReadTarget.VramRead);
+                    _vramRequestState = VramRequestState.None;
+                    break;
+
+                case VramRequestState.WriteData:
+                    SetupVramRequestWrite(_vramRequestData);
+                    if ((_vramRequestAddress >> 8) == 0x3F)
+                    {
+                        // PPU /WR pin is not active for palette addresses.
+                        Pins.PpuWR = true;
+                    }
+                    _vramRequestState = VramRequestState.None;
+                    break;
+            }
+
             // Conceptually, the PPU does this 33 times for each scanline:
             // 
             // Fetch a nametable entry from $2000 -$2FBF.
@@ -145,25 +185,42 @@ namespace Aemula.Chips.Ricoh2C02
             // Turn the attribute data and the pattern table data into palette indices, and combine them with data from sprite data using priority.
             // It also does a fetch of a 34th(nametable, attribute, pattern) tuple that is never used, but some mappers rely on this fetch for timing purposes.
 
+            if (CurrentScanline == 241 && CurrentDot == 1)
+            {
+                StatusRegister.VBlankStarted = true;
+            }
+            else if (CurrentScanline == 261 && CurrentDot == 1)
+            {
+                StatusRegister.VBlankStarted = false;
+                StatusRegister.Sprite0Hit = false;
+                StatusRegister.SpriteOverflow = false;
+            }
 
             // Increment dot and scanline counters.
-           _currentDot++;
-            if (_currentDot == 341)
+            CurrentDot++;
+            if (CurrentDot == 341)
             {
-                _currentDot = 0;
-                _currentScanline++;
-                if (_currentScanline == 262)
+                CurrentDot = 0;
+                CurrentScanline++;
+                if (CurrentScanline == 262)
                 {
-                    _currentScanline = 0;
+                    // TODO: Need to skip last cycle of scanline 261 for odd frames.
+                    CurrentScanline = 0;
+
+                    Frames++;
                 }
             }
+
+            Pins.Nmi = !(StatusRegister.VBlankStarted && CtrlRegister.EnableNmi);
+
+            Cycles++;
         }
 
         public void CpuCycle()
         {
             ref var pins = ref Pins;
 
-            if (pins.CpuRW)
+            if (pins.CpuRW) // Read
             {
                 var result = _currentLatchData;
 
@@ -176,10 +233,9 @@ namespace Aemula.Chips.Ricoh2C02
                         break;
 
                     case PpuStatusAddress:
-                        _ppuStatusRegister.VBlankStarted = true; // HACK: Remove this.
-                        _ppuStatusRegister.Unused = _currentLatchData;
-                        result = _ppuStatusRegister.Data.Value;
-                        _ppuStatusRegister.VBlankStarted = false;
+                        StatusRegister.Unused = _currentLatchData;
+                        result = StatusRegister.Data.Value;
+                        StatusRegister.VBlankStarted = false;
                         _firstWrite = true;
                         break;
 
@@ -197,7 +253,7 @@ namespace Aemula.Chips.Ricoh2C02
                         break;
 
                     case PpuDataAddress:
-                        result = PpuRead(_ppuAddress);
+                        result = PpuRead();
                         IncrementPpuAddress();
                         break;
 
@@ -209,19 +265,19 @@ namespace Aemula.Chips.Ricoh2C02
 
                 pins.CpuData = result;
             }
-            else
+            else // Write
             {
                 _currentLatchData = pins.CpuData;
 
                 switch (Pins.CpuAddress)
                 {
                     case PpuCtrlAddress:
-                        _ppuCtrlRegister.Data.Value = pins.CpuData;
+                        CtrlRegister.Data.Value = pins.CpuData;
                         // TODO: If we're in vblank, and _ppuStatusRegister.VBlankStarted is set, changing NMI flag from 0 to 1 should trigger NMI.
                         break;
 
                     case PpuMaskAddress:
-                        _ppuMaskRegister.Data.Value = pins.CpuData;
+                        MaskRegister.Data.Value = pins.CpuData;
                         break;
 
                     case PpuStatusAddress: // Read-only
@@ -265,7 +321,7 @@ namespace Aemula.Chips.Ricoh2C02
                         break;
 
                     case PpuDataAddress:
-                        PpuWrite(_ppuAddress, pins.CpuData);
+                        PpuWrite(pins.CpuData);
                         IncrementPpuAddress();
                         break;
 
@@ -277,53 +333,85 @@ namespace Aemula.Chips.Ricoh2C02
 
         private void IncrementPpuAddress()
         {
-            _ppuAddress += (_ppuCtrlRegister.VRamAddressIncrementMode == VRamAddressIncrementMode.Add32)
+            _ppuAddress += (CtrlRegister.VRamAddressIncrementMode == VRamAddressIncrementMode.Add32)
                 ? (ushort)32
                 : (ushort)1;
         }
 
         private byte ReadPaletteMemory(ushort address)
         {
-            if (_ppuMaskRegister.Grayscale)
+            if (MaskRegister.Grayscale)
             {
                 address &= 0x30;
             }
             return _paletteMemory[GetPaletteAddress(address)];
         }
 
-        private byte PpuRead(ushort address)
+        private void SetupVramRequest(ushort address)
+        {
+            Pins.PpuAddressData.Address = address;
+            Pins.PpuAle = true;
+            Pins.PpuRD = true;
+            Pins.PpuWR = true;
+        }
+
+        private void SetupVramRequestRead(VramReadTarget target)
+        {
+            Pins.PpuAle = false;
+            Pins.PpuRD = false;
+            Pins.PpuWR = true;
+
+            _vramReadTarget = target;
+        }
+
+        private void SetupVramRequestWrite(byte data)
+        {
+            Pins.PpuAddressData.Data = data;
+            Pins.PpuAle = false;
+            Pins.PpuRD = true;
+            Pins.PpuWR = false;
+        }
+
+        private enum VramReadTarget
+        {
+            VramRead
+        }
+
+        private enum VramRequestState
+        {
+            None,
+            SetupAddressForRead,
+            SetupAddressForWrite,
+            ReadData,
+            WriteData,
+        }
+
+        private byte PpuRead()
         {
             ref var pins = ref Pins;
-            var result = pins.PpuData;
+            var result = _ppuReadBuffer;
 
-            if (address >= 0x3F00 && address <= 0x3FFF)
+            _vramRequestState = VramRequestState.SetupAddressForRead;
+            _vramRequestAddress = _ppuAddress;
+
+            if ((_ppuAddress >> 8) == 0x3F)
             {
-                result = pins.PpuData = ReadPaletteMemory(address);
-            }
-            else
-            {
-                // Return the contents of the internal read buffer,
-                // and set the PPU pins so we'll have the actual data available
-                // in the next cycle.
-                pins.PpuAddress = address;
-                pins.PpuRW = true;
+                result = _ppuReadBuffer = ReadPaletteMemory(_ppuAddress);
             }
 
             return result;
         }
 
-        private void PpuWrite(ushort address, byte data)
+        private void PpuWrite(byte data)
         {
-            if (address >= 0x3F00 && address <= 0x3FFF)
-            {
-                _paletteMemory[GetPaletteAddress(address)] = data;
-            }
+            _vramRequestState = VramRequestState.SetupAddressForWrite;
+            _vramRequestAddress = _ppuAddress;
+            _vramRequestData = data;
 
-            // TODO: This currently means we'll write to the VRAM range between 0x3F00..0x3FFF.
-            ref var pins = ref Pins;
-            pins.PpuAddress = address;
-            pins.PpuData = data;
-            pins.PpuRW = false;
+            if ((_ppuAddress >> 8) == 0x3F)
+            {
+                _paletteMemory[GetPaletteAddress(_ppuAddress)] = data;
+            }
         }
 
         private static ushort GetPaletteAddress(ushort address)
@@ -349,6 +437,7 @@ namespace Aemula.Chips.Ricoh2C02
 
         public IEnumerable<DebuggerWindow> CreateDebuggerWindows()
         {
+            yield return new PpuStateWindow(this);
             yield return new PaletteWindow(this);
         }
 

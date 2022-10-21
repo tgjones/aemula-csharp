@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Aemula.UI;
+using Aemula.Debugging;
 
 namespace Aemula
 {
@@ -14,21 +12,24 @@ namespace Aemula
             ProgramLoaded?.Invoke(this, EventArgs.Empty);
         }
 
-        public abstract ushort LastPC { get; }
+        public abstract ulong CyclesPerSecond { get; }
 
         public virtual void Reset() { }
 
         public abstract void LoadProgram(string filePath);
 
-        public abstract void RunForDuration(TimeSpan duration);
-        public abstract void StepInstruction();
-        public abstract void StepCpuCycle();
-
-        public abstract SortedDictionary<ushort, DisassembledInstruction> Disassemble();
-
-        public virtual IEnumerable<DebuggerWindow> CreateDebuggerWindows()
+        public void RunForDuration(TimeSpan duration)
         {
-            return Enumerable.Empty<DebuggerWindow>();
+            var clocks = duration.ToSystemTicks(CyclesPerSecond);
+
+            for (var i = 0; i < clocks; i++)
+            {
+                Tick();
+            }
         }
+
+        public abstract void Tick();
+
+        public virtual Debugger CreateDebugger() => null;
     }
 }
