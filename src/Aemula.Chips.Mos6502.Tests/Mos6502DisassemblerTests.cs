@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using Aemula.Chips.Mos6502.Debugging;
 using Aemula.Debugging;
 using NUnit.Framework;
@@ -128,7 +129,9 @@ MySubroutine
     {
         public static byte[] Assemble(string source)
         {
-            var dasmPath = Path.GetFullPath("../../../../../tools/dasm-2.20.14.1/dasm.exe");
+            var (fileNamePrefix, fileNameSuffix) = GetFileNamePrefixAndSuffix();
+
+            var dasmPath = Path.GetFullPath($"../../../../../tools/dasm-2.20.14.1/{fileNamePrefix}-dasm{fileNameSuffix}");
 
             var sourcePath = Path.GetTempFileName();
             var destinationPath = Path.GetTempFileName();
@@ -156,6 +159,26 @@ MySubroutine
             {
                 File.Delete(destinationPath);
                 File.Delete(sourcePath);
+            }
+        }
+
+        private static (string prefix, string suffix) GetFileNamePrefixAndSuffix()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return ("win", ".exe");
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                return ("osx", "");
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                return ("linux", "");
+            }
+            else
+            {
+                throw new InvalidOperationException();
             }
         }
     }
