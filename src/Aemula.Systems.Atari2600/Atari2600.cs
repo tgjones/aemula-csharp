@@ -1,6 +1,8 @@
 ﻿using System.IO;
 using Aemula.Chips.Mos6532;
 using Aemula.Chips.Tia;
+using Aemula.Debugging;
+using Aemula.Systems.Atari2600.Debugging;
 using static Aemula.BitUtility;
 
 namespace Aemula.Systems.Atari2600;
@@ -20,6 +22,9 @@ public sealed class Atari2600 : EmulatedSystem
 
     private Cartridge _cartridge;
     private VideoOutput _videoOutput;
+
+    internal Mos6507 Cpu => _cpu;
+    internal VideoOutput VideoOutput => _videoOutput;
 
     public Atari2600()
     {
@@ -61,10 +66,17 @@ public sealed class Atari2600 : EmulatedSystem
         }
     }
 
+    internal void WriteByteDebug(ushort address, byte value)
+    {
+        // TODO
+    }
+
     public override void LoadProgram(string filePath)
     {
         var cartridgeData = File.ReadAllBytes(filePath);
         _cartridge = Cartridge.FromData(cartridgeData);
+
+        RaiseProgramLoaded();
     }
 
     public override void Tick()
@@ -149,5 +161,10 @@ public sealed class Atari2600 : EmulatedSystem
         {
             // TODO: Write to cartridge?
         }
+    }
+
+    public override Debugger CreateDebugger()
+    {
+        return new Atari2600Debugger(this);
     }
 }

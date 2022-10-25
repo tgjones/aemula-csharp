@@ -8,6 +8,7 @@ namespace Aemula.UI;
 public sealed class ScreenDisplayWindow : DebuggerWindow
 {
     private readonly DisplayBuffer _displayBuffer;
+    private readonly int _angle;
 
     private GraphicsDevice _graphicsDevice;
     private Texture _texture;
@@ -15,9 +16,10 @@ public sealed class ScreenDisplayWindow : DebuggerWindow
 
     public override string DisplayName => "Display";
 
-    public ScreenDisplayWindow(DisplayBuffer displayBuffer)
+    public ScreenDisplayWindow(DisplayBuffer displayBuffer, int angle = 0)
     {
         _displayBuffer = displayBuffer;
+        _angle = angle;
     }
 
     public override void CreateGraphicsResources(GraphicsDevice graphicsDevice, ImGuiRenderer renderer)
@@ -50,6 +52,15 @@ public sealed class ScreenDisplayWindow : DebuggerWindow
             _displayBuffer.Height,
             1, 0, 0);
 
+        if (_angle == 0)
+        {
+            ImGui.Image(
+                _textureBinding,
+                new Vector2(_texture.Width, _texture.Height));
+
+            return;
+        }
+
         var size = new Vector2(_texture.Height, _texture.Width);
 
         var cursorPos = ImGui.GetCursorPos();
@@ -70,10 +81,6 @@ public sealed class ScreenDisplayWindow : DebuggerWindow
             _textureBinding, 
             p1, p2, p3, p4, 
             uv0, uv1, uv2, uv3);
-
-        //ImGui.Image(
-        //    _textureBinding,
-        //    new Vector2(_texture.Width, _texture.Height));
     }
 
     public override void Dispose()

@@ -49,6 +49,6 @@ public sealed class SpaceInvadersDebugger : Debugger
             yield return debuggerWindow;
         }
 
-        yield return new ScreenDisplayWindow(_system.Display);
+        yield return new ScreenDisplayWindow(_system.Display, 90);
     }
 }

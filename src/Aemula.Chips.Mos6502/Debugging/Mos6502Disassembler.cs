@@ -5,24 +5,33 @@ namespace Aemula.Chips.Mos6502.Debugging;
 
 public class Mos6502Disassembler : Disassembler
 {
-    private static readonly Dictionary<ushort, string> StartAddresses = new()
-    {
-        { 0xFFFA, "NMI" },
-        { 0xFFFC, "RESET" },
-        { 0xFFFE, "IRQ / BRK" }
-    };
-
+    private readonly Dictionary<ushort, string> _startAddresses;
     private readonly Dictionary<ushort, string> _equates;
 
-    public Mos6502Disassembler(DebuggerMemoryCallbacks memoryCallbacks, Dictionary<ushort, string> equates)
+    public Mos6502Disassembler(
+        DebuggerMemoryCallbacks memoryCallbacks, 
+        Dictionary<ushort, string> equates,
+        bool hasNmi = true,
+        bool hasIrq = true)
         : base(memoryCallbacks)
     {
         _equates = equates;
+
+        _startAddresses = new Dictionary<ushort, string>();
+        if (hasNmi)
+        {
+            _startAddresses.Add(0xFFFA, "NMI");
+        }
+        _startAddresses.Add(0xFFFC, "RESET");
+        if (hasIrq)
+        {
+            _startAddresses.Add(0xFFFE, "IRQ / BRK");
+        }
     }
 
     protected override void OnReset(List<ushort> startAddresses, Dictionary<ushort, string> labels)
     {
-        foreach (var startAddress in StartAddresses)
+        foreach (var startAddress in _startAddresses)
         {
             var targetAddress = MemoryCallbacks.ReadWord(startAddress.Key);
 

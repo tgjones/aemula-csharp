@@ -26,14 +26,24 @@ public abstract class Disassembler
         var labels = new Dictionary<ushort, string>();
         OnReset(startAddresses, labels);
 
-        var queue = new Queue<ushort>(startAddresses);
+        DisassembleAddresses(startAddresses);
+
+        foreach (var label in labels)
+        {
+            Cache[label.Key].Label = label.Value;
+        }
+    }
+
+    private void DisassembleAddresses(List<ushort> addresses)
+    {
+        var queue = new Queue<ushort>(addresses);
 
         var visited = new HashSet<ushort>();
         while (queue.Count > 0)
         {
             var address = queue.Dequeue();
 
-            if (!visited.Add(address))
+            if (!visited.Add(address) || Cache[address].Instruction != null)
             {
                 continue;
             }
@@ -58,11 +68,6 @@ public abstract class Disassembler
             }
         }
 
-        foreach (var label in labels)
-        {
-            Cache[label.Key].Label = label.Value;
-        }
-
         Changed = true;
     }
 
@@ -74,7 +79,12 @@ public abstract class Disassembler
 
     public void OnAddressExecuting(ushort address)
     {
-        // TODO: Ensure cached entry for this address.
+        if (Cache[address].Instruction != null)
+        {
+            return;
+        }
+
+        DisassembleAddresses(new List<ushort> { address });
     }
 
     public void OnDataWritten(ushort address)

@@ -24,7 +24,7 @@ internal sealed class VideoOutput
     private ushort _currentVisibleScanlines;
     private bool _scanlineContainedNonBlank;
 
-    private uint[] _videoData;
+    public DisplayBuffer DisplayBuffer { get; private set; }
 
     public VideoOutput()
     {
@@ -38,7 +38,7 @@ internal sealed class VideoOutput
 
     private void CreateOutputBuffer()
     {
-        _videoData = new uint[Width * _viewportHeight * 4];
+        DisplayBuffer = new DisplayBuffer(Width, _viewportHeight);
     }
 
     public void Cycle(ref TiaPins tiaPins)
@@ -96,13 +96,14 @@ internal sealed class VideoOutput
 
             var positionY = (int)Math.Round(_currentVisibleScanlines - ((_numVisibleScanlines - _viewportHeight) / 2.0f));
 
-            var videoDataIndex = ((positionY * Width) + (_currentPos)) * 4;
-            if (videoDataIndex > 0 && videoDataIndex < _videoData.Length)
+            var videoDataIndex = ((positionY * Width) + (_currentPos));
+            if (videoDataIndex > 0 && videoDataIndex < (Width * _viewportHeight))
             {
-                _videoData[videoDataIndex + 0] = (color >> 0) & 0xFF;  // R
-                _videoData[videoDataIndex + 1] = (color >> 8) & 0xFF;  // G
-                _videoData[videoDataIndex + 2] = (color >> 16) & 0xFF; // B
-                _videoData[videoDataIndex + 3] = 0xFF;                 // A
+                DisplayBuffer.Data[videoDataIndex] = new Veldrid.RgbaByte(
+                    (byte)((color >> 0) & 0xFF),  // R
+                    (byte)((color >> 8) & 0xFF),  // G
+                    (byte)((color >> 16) & 0xFF), // B
+                    0xFF);                // A
             }
 
             _currentPos++;
