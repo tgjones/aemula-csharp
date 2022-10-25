@@ -105,7 +105,7 @@ namespace Aemula.Systems.SpaceInvaders
                     case Intel8080.StatusWordInputRead:
                         pins.Data = (pins.Address & 0xFF) switch
                         {
-                            1 => 0, // TODO: Player inputs
+                            1 => GetIOPort1Value(),
                             2 => 0, // TODO: Player inputs
                             3 => _shifter.GetResult(),
                             _ => throw new InvalidOperationException(),
@@ -139,14 +139,14 @@ namespace Aemula.Systems.SpaceInvaders
                                 _shifter.SetShiftCount(pins.Data);
                                 break;
 
-                            case 3:
+                            case 3: // Sound related
                                 break;
 
                             case 4:
                                 _shifter.SetShiftData(pins.Data);
                                 break;
 
-                            case 5:
+                            case 5: // Sound related
                                 break;
 
                             case 6:
@@ -180,6 +180,47 @@ namespace Aemula.Systems.SpaceInvaders
                 UpdateDisplay();
             }
         }
+
+        private byte GetIOPort1Value()
+        {
+            // BIT 0   coin (0 when active)    
+            //     1   P2 start button    
+            //     2   P1 start button    
+            //     3   ?    
+            //     4   P1 shoot button    
+            //     5   P1 joystick left    
+            //     6   P1 joystick right    
+            //     7   ?    
+
+            var result = (byte)0;
+            if (_keyCoin)
+            {
+                result |= 0x01;
+            }
+            if (_keyStart)
+            {
+                result |= 0x04;
+            }
+            if (_keyShoot)
+            {
+                result |= 0x10;
+            }
+            if (_keyLeft)
+            {
+                result |= 0x20;
+            }
+            if (_keyRight)
+            {
+                result |= 0x40;
+            }
+            return result;
+        }
+
+        private bool _keyCoin;
+        private bool _keyStart;
+        private bool _keyShoot;
+        private bool _keyLeft;
+        private bool _keyRight;
 
         private void UpdateDisplay()
         {
@@ -230,6 +271,30 @@ namespace Aemula.Systems.SpaceInvaders
         private void WriteByteDebug(ushort address, byte value)
         {
             // TODO
+        }
+
+        public override void OnKeyEvent(KeyEvent keyEvent)
+        {
+            if (keyEvent.Key == Key.Number0)
+            {
+                _keyCoin = keyEvent.Down;
+            }
+            if (keyEvent.Key == Key.Number1)
+            {
+                _keyStart = keyEvent.Down;
+            }
+            if (keyEvent.Key == Key.Space)
+            {
+                _keyShoot = keyEvent.Down;
+            }
+            if (keyEvent.Key == Key.Left)
+            {
+                _keyLeft = keyEvent.Down;
+            }
+            if (keyEvent.Key == Key.Right)
+            {
+                _keyRight = keyEvent.Down;
+            }
         }
 
         public override Debugger CreateDebugger()

@@ -1,5 +1,6 @@
 ﻿using System;
 using Aemula.Debugging;
+using Veldrid;
 
 namespace Aemula
 {
@@ -29,6 +30,8 @@ namespace Aemula
         }
 
         public abstract void Tick();
+
+        public virtual void OnKeyEvent(KeyEvent keyEvent) { }
 
         public virtual Debugger CreateDebugger() => null;
     }

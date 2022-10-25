@@ -78,7 +78,14 @@ namespace Aemula.Gui
                 lastTime = stopwatch.Elapsed;
 
                 var deltaTime = (float)deltaTimeSpan.TotalSeconds;
-                imGuiRenderer.Update(deltaTime, window.PumpEvents());
+                var inputSnapshot = window.PumpEvents();
+
+                imGuiRenderer.Update(deltaTime, inputSnapshot);
+
+                foreach (var keyEvent in inputSnapshot.KeyEvents)
+                {
+                    system.OnKeyEvent(keyEvent);
+                }
 
                 var emulatorTime = new EmulatorTime(stopwatch.Elapsed, deltaTimeSpan);
 
