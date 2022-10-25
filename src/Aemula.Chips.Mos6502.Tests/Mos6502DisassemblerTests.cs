@@ -7,14 +7,14 @@ using Aemula.Chips.Mos6502.Debugging;
 using Aemula.Debugging;
 using NUnit.Framework;
 
-namespace Aemula.Chips.Mos6502.Tests
+namespace Aemula.Chips.Mos6502.Tests;
+
+public class Mos6502DisassemblerTests
 {
-    public class Mos6502DisassemblerTests
+    [Test]
+    public void CanDisassembleSimpleInstructions()
     {
-        [Test]
-        public void CanDisassembleSimpleInstructions()
-        {
-            var bytes = DasmHelper.Assemble(@"
+        var bytes = DasmHelper.Assemble(@"
         processor 6502
 
         org $F000
@@ -26,44 +26,44 @@ Start   nop
         .word Start ; reset vector
         .word Start ; interrupt vector");
 
-            var memoryCallbacks = new DebuggerMemoryCallbacks(
-                address => bytes[address - 0xF000],
-                (address, value) => throw new NotSupportedException());
+        var memoryCallbacks = new DebuggerMemoryCallbacks(
+            address => bytes[address - 0xF000],
+            (address, value) => throw new NotSupportedException());
 
-            var disassembler = new Mos6502Disassembler(
-                memoryCallbacks,
-                new Dictionary<ushort, string>());
+        var disassembler = new Mos6502Disassembler(
+            memoryCallbacks,
+            new Dictionary<ushort, string>());
 
-            disassembler.Reset();
+        disassembler.Reset();
 
-            for (var i = 0; i < disassembler.Cache.Length; i++)
+        for (var i = 0; i < disassembler.Cache.Length; i++)
+        {
+            ref readonly var entry = ref disassembler.Cache[i];
+
+            switch (i)
             {
-                ref readonly var entry = ref disassembler.Cache[i];
+                case 0xF000:
+                    Assert.AreEqual("RESET, IRQ / BRK", entry.Label);
+                    Assert.NotNull(entry.Instruction);
+                    break;
 
-                switch (i)
-                {
-                    case 0xF000:
-                        Assert.AreEqual("RESET, IRQ / BRK", entry.Label);
-                        Assert.NotNull(entry.Instruction);
-                        break;
+                case 0xF001:
+                    Assert.AreEqual(null, entry.Label);
+                    Assert.NotNull(entry.Instruction);
+                    break;
 
-                    case 0xF001:
-                        Assert.AreEqual(null, entry.Label);
-                        Assert.NotNull(entry.Instruction);
-                        break;
-
-                    default:
-                        Assert.AreEqual(null, entry.Label);
-                        Assert.Null(entry.Instruction);
-                        break;
-                }
+                default:
+                    Assert.AreEqual(null, entry.Label);
+                    Assert.Null(entry.Instruction);
+                    break;
             }
         }
+    }
 
-        [Test]
-        public void CanDisassembleSubroutine()
-        {
-            var bytes = DasmHelper.Assemble(@"
+    [Test]
+    public void CanDisassembleSubroutine()
+    {
+        var bytes = DasmHelper.Assemble(@"
         processor 6502
 
         org $F000
@@ -80,106 +80,105 @@ MySubroutine
         .word Start ; reset vector
         .word Start ; interrupt vector");
 
-            var memoryCallbacks = new DebuggerMemoryCallbacks(
-                address => bytes[address - 0xF000],
-                (address, value) => throw new NotSupportedException());
+        var memoryCallbacks = new DebuggerMemoryCallbacks(
+            address => bytes[address - 0xF000],
+            (address, value) => throw new NotSupportedException());
 
-            var disassembler = new Mos6502Disassembler(
-                memoryCallbacks,
-                new Dictionary<ushort, string>());
+        var disassembler = new Mos6502Disassembler(
+            memoryCallbacks,
+            new Dictionary<ushort, string>());
 
-            disassembler.Reset();
+        disassembler.Reset();
 
-            for (var i = 0; i < disassembler.Cache.Length; i++)
+        for (var i = 0; i < disassembler.Cache.Length; i++)
+        {
+            ref readonly var entry = ref disassembler.Cache[i];
+
+            switch (i)
             {
-                ref readonly var entry = ref disassembler.Cache[i];
+                case 0xF000:
+                    Assert.AreEqual("RESET, IRQ / BRK", entry.Label);
+                    Assert.NotNull(entry.Instruction);
+                    break;
 
-                switch (i)
-                {
-                    case 0xF000:
-                        Assert.AreEqual("RESET, IRQ / BRK", entry.Label);
-                        Assert.NotNull(entry.Instruction);
-                        break;
+                case 0xF003:
+                    Assert.AreEqual(null, entry.Label);
+                    Assert.NotNull(entry.Instruction);
+                    break;
 
-                    case 0xF003:
-                        Assert.AreEqual(null, entry.Label);
-                        Assert.NotNull(entry.Instruction);
-                        break;
+                case 0xF006:
+                    Assert.AreEqual("Subroutine", entry.Label);
+                    Assert.NotNull(entry.Instruction);
+                    break;
 
-                    case 0xF006:
-                        Assert.AreEqual("Subroutine", entry.Label);
-                        Assert.NotNull(entry.Instruction);
-                        break;
+                case 0xF008:
+                    Assert.AreEqual(null, entry.Label);
+                    Assert.NotNull(entry.Instruction);
+                    break;
 
-                    case 0xF008:
-                        Assert.AreEqual(null, entry.Label);
-                        Assert.NotNull(entry.Instruction);
-                        break;
-
-                    default:
-                        Assert.AreEqual(null, entry.Label);
-                        Assert.Null(entry.Instruction);
-                        break;
-                }
+                default:
+                    Assert.AreEqual(null, entry.Label);
+                    Assert.Null(entry.Instruction);
+                    break;
             }
         }
     }
+}
 
-    internal static class DasmHelper
+internal static class DasmHelper
+{
+    public static byte[] Assemble(string source)
     {
-        public static byte[] Assemble(string source)
+        var (fileNamePrefix, fileNameSuffix) = GetFileNamePrefixAndSuffix();
+
+        var dasmPath = Path.GetFullPath($"../../../../../tools/dasm-2.20.14.1/{fileNamePrefix}-dasm{fileNameSuffix}");
+
+        var sourcePath = Path.GetTempFileName();
+        var destinationPath = Path.GetTempFileName();
+
+        try
         {
-            var (fileNamePrefix, fileNameSuffix) = GetFileNamePrefixAndSuffix();
+            File.WriteAllText(sourcePath, source);
 
-            var dasmPath = Path.GetFullPath($"../../../../../tools/dasm-2.20.14.1/{fileNamePrefix}-dasm{fileNameSuffix}");
+            var process = new Process();
+            process.StartInfo.FileName = dasmPath;
+            process.StartInfo.Arguments = $"\"{sourcePath}\" -o\"{destinationPath}\" -f3";
+            process.StartInfo.RedirectStandardOutput = true;
+            process.Start();
+            process.WaitForExit();
 
-            var sourcePath = Path.GetTempFileName();
-            var destinationPath = Path.GetTempFileName();
-
-            try
+            if (process.ExitCode != 0)
             {
-                File.WriteAllText(sourcePath, source);
-
-                var process = new Process();
-                process.StartInfo.FileName = dasmPath;
-                process.StartInfo.Arguments = $"\"{sourcePath}\" -o\"{destinationPath}\" -f3";
-                process.StartInfo.RedirectStandardOutput = true;
-                process.Start();
-                process.WaitForExit();
-
-                if (process.ExitCode != 0)
-                {
-                    var stdOutput = process.StandardOutput.ReadToEnd();
-                    throw new Exception(stdOutput);
-                }
-
-                return File.ReadAllBytes(destinationPath);
+                var stdOutput = process.StandardOutput.ReadToEnd();
+                throw new Exception(stdOutput);
             }
-            finally
-            {
-                File.Delete(destinationPath);
-                File.Delete(sourcePath);
-            }
+
+            return File.ReadAllBytes(destinationPath);
         }
-
-        private static (string prefix, string suffix) GetFileNamePrefixAndSuffix()
+        finally
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                return ("win", ".exe");
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                return ("osx", "");
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                return ("linux", "");
-            }
-            else
-            {
-                throw new InvalidOperationException();
-            }
+            File.Delete(destinationPath);
+            File.Delete(sourcePath);
+        }
+    }
+
+    private static (string prefix, string suffix) GetFileNamePrefixAndSuffix()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return ("win", ".exe");
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return ("osx", "");
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return ("linux", "");
+        }
+        else
+        {
+            throw new InvalidOperationException();
         }
     }
 }

@@ -4,124 +4,123 @@ using Aemula.UI;
 using ImGuiNET;
 using Veldrid;
 
-namespace Aemula.Consoles.Nes.UI
+namespace Aemula.Consoles.Nes.UI;
+
+internal sealed class PatternTableWindow : DebuggerWindow
 {
-    internal sealed class PatternTableWindow : DebuggerWindow
+    private const int PatternTableSize = 128;
+    private const int Scale = 2;
+
+    private static readonly TimeSpan TextureUpdateInterval = TimeSpan.FromMilliseconds(200);
+
+    private readonly Nes _nes;
+
+    private readonly RgbaByte[] _pixelData0;
+    private readonly RgbaByte[] _pixelData1;
+
+    private GraphicsDevice _graphicsDevice;
+    private Texture _patternTableTexture0, _patternTableTexture1;
+
+    private IntPtr _patternTableTexture0Ptr, _patternTableTexture1Ptr;
+
+    private TimeSpan _nextTextureUpdateTime;
+
+    public override string DisplayName => "NES PPU Pattern Table";
+
+    public override Pane PreferredPane => Pane.Bottom;
+
+    public PatternTableWindow(Nes nes)
     {
-        private const int PatternTableSize = 128;
-        private const int Scale = 2;
+        _nes = nes;
 
-        private static readonly TimeSpan TextureUpdateInterval = TimeSpan.FromMilliseconds(200);
+        _pixelData0 = new RgbaByte[PatternTableSize * PatternTableSize];
+        _pixelData1 = new RgbaByte[PatternTableSize * PatternTableSize];
+    }
 
-        private readonly Nes _nes;
+    public override void CreateGraphicsResources(GraphicsDevice graphicsDevice, ImGuiRenderer renderer)
+    {
+        _graphicsDevice = graphicsDevice;
 
-        private readonly RgbaByte[] _pixelData0;
-        private readonly RgbaByte[] _pixelData1;
-
-        private GraphicsDevice _graphicsDevice;
-        private Texture _patternTableTexture0, _patternTableTexture1;
-
-        private IntPtr _patternTableTexture0Ptr, _patternTableTexture1Ptr;
-
-        private TimeSpan _nextTextureUpdateTime;
-
-        public override string DisplayName => "NES PPU Pattern Table";
-
-        public override Pane PreferredPane => Pane.Bottom;
-
-        public PatternTableWindow(Nes nes)
+        Texture CreateTexture()
         {
-            _nes = nes;
-
-            _pixelData0 = new RgbaByte[PatternTableSize * PatternTableSize];
-            _pixelData1 = new RgbaByte[PatternTableSize * PatternTableSize];
+            return graphicsDevice.ResourceFactory.CreateTexture(new TextureDescription(
+                PatternTableSize, PatternTableSize,
+                1, 1, 1,
+                PixelFormat.R8_G8_B8_A8_UNorm,
+                TextureUsage.Sampled,
+                TextureType.Texture2D));
         }
 
-        public override void CreateGraphicsResources(GraphicsDevice graphicsDevice, ImGuiRenderer renderer)
-        {
-            _graphicsDevice = graphicsDevice;
+        _patternTableTexture0 = CreateTexture();
+        _patternTableTexture1 = CreateTexture();
 
-            Texture CreateTexture()
+        _patternTableTexture0Ptr = renderer.GetOrCreateImGuiBinding(graphicsDevice.ResourceFactory, _patternTableTexture0);
+        _patternTableTexture1Ptr = renderer.GetOrCreateImGuiBinding(graphicsDevice.ResourceFactory, _patternTableTexture1);
+    }
+
+    protected override void DrawOverride(EmulatorTime time)
+    {
+        if (time.TotalTime > _nextTextureUpdateTime)
+        {
+            PopulateTexture(_pixelData0, _patternTableTexture0, (ushort)0x0000u);
+            PopulateTexture(_pixelData1, _patternTableTexture1, (ushort)0x1000u);
+
+            _nextTextureUpdateTime = time.TotalTime + TextureUpdateInterval;
+        }
+
+        var size = new Vector2(PatternTableSize * 2, PatternTableSize * Scale);
+
+        ImGui.Image(_patternTableTexture0Ptr, size);
+        ImGui.SameLine();
+        ImGui.Image(_patternTableTexture1Ptr, size);
+    }
+
+    private void PopulateTexture(RgbaByte[] pixelData, Texture texture, ushort startAddress)
+    {
+        var x = 0;
+        var y = 0;
+
+        for (var tileAddress = startAddress; tileAddress < startAddress + 0x0FFFu; tileAddress += 16)
+        {
+            if (tileAddress > startAddress && tileAddress % 256 == 0)
             {
-                return graphicsDevice.ResourceFactory.CreateTexture(new TextureDescription(
-                    PatternTableSize, PatternTableSize,
-                    1, 1, 1,
-                    PixelFormat.R8_G8_B8_A8_UNorm,
-                    TextureUsage.Sampled,
-                    TextureType.Texture2D));
+                y += 8;
+                x = 0;
             }
 
-            _patternTableTexture0 = CreateTexture();
-            _patternTableTexture1 = CreateTexture();
+            var startX = x;
 
-            _patternTableTexture0Ptr = renderer.GetOrCreateImGuiBinding(graphicsDevice.ResourceFactory, _patternTableTexture0);
-            _patternTableTexture1Ptr = renderer.GetOrCreateImGuiBinding(graphicsDevice.ResourceFactory, _patternTableTexture1);
-        }
-
-        protected override void DrawOverride(EmulatorTime time)
-        {
-            if (time.TotalTime > _nextTextureUpdateTime)
+            for (var row = 0; row < 8; row++)
             {
-                PopulateTexture(_pixelData0, _patternTableTexture0, (ushort)0x0000u);
-                PopulateTexture(_pixelData1, _patternTableTexture1, (ushort)0x1000u);
+                var baseAddress = tileAddress + row;
 
-                _nextTextureUpdateTime = time.TotalTime + TextureUpdateInterval;
-            }
+                var addressPlane0 = (ushort)(baseAddress);
+                var addressPlane1 = (ushort)(baseAddress + 8);
 
-            var size = new Vector2(PatternTableSize * 2, PatternTableSize * Scale);
+                var dataPlane0 = _nes.ReadChrRom(addressPlane0);
+                var dataPlane1 = _nes.ReadChrRom(addressPlane1);
 
-            ImGui.Image(_patternTableTexture0Ptr, size);
-            ImGui.SameLine();
-            ImGui.Image(_patternTableTexture1Ptr, size);
-        }
-
-        private void PopulateTexture(RgbaByte[] pixelData, Texture texture, ushort startAddress)
-        {
-            var x = 0;
-            var y = 0;
-
-            for (var tileAddress = startAddress; tileAddress < startAddress + 0x0FFFu; tileAddress += 16)
-            {
-                if (tileAddress > startAddress && tileAddress % 256 == 0)
+                for (var column = 0; column < 8; column++)
                 {
-                    y += 8;
-                    x = 0;
+                    var pixelPlane0 = (dataPlane0 >> (7 - column)) & 1;
+                    var pixelPlane1 = (dataPlane1 >> (7 - column)) & 1;
+
+                    var pixel = pixelPlane0 | (pixelPlane1 << 1);
+
+                    var gray = (byte)(pixel * 50);
+                    var actualY = y + row;
+                    var pixelIndex = actualY * PatternTableSize + x;
+                    pixelData[pixelIndex] = new RgbaByte(gray, gray, gray, 255);
+
+                    x++;
                 }
 
-                var startX = x;
-
-                for (var row = 0; row < 8; row++)
-                {
-                    var baseAddress = tileAddress + row;
-
-                    var addressPlane0 = (ushort)(baseAddress);
-                    var addressPlane1 = (ushort)(baseAddress + 8);
-
-                    var dataPlane0 = _nes.ReadChrRom(addressPlane0);
-                    var dataPlane1 = _nes.ReadChrRom(addressPlane1);
-
-                    for (var column = 0; column < 8; column++)
-                    {
-                        var pixelPlane0 = (dataPlane0 >> (7 - column)) & 1;
-                        var pixelPlane1 = (dataPlane1 >> (7 - column)) & 1;
-
-                        var pixel = pixelPlane0 | (pixelPlane1 << 1);
-
-                        var gray = (byte)(pixel * 50);
-                        var actualY = y + row;
-                        var pixelIndex = actualY * PatternTableSize + x;
-                        pixelData[pixelIndex] = new RgbaByte(gray, gray, gray, 255);
-
-                        x++;
-                    }
-
-                    x = startX;
-                }
-
-                x += 8;
+                x = startX;
             }
 
-            _graphicsDevice.UpdateTexture(texture, pixelData, 0, 0, 0, PatternTableSize, PatternTableSize, 1, 0, 0);
+            x += 8;
         }
+
+        _graphicsDevice.UpdateTexture(texture, pixelData, 0, 0, 0, PatternTableSize, PatternTableSize, 1, 0, 0);
     }
 }

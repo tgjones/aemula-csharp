@@ -2,85 +2,84 @@
 using Aemula.Chips.Mos6502;
 using Aemula.UI;
 
-namespace Aemula.Chips.Ricoh2A03
+namespace Aemula.Chips.Ricoh2A03;
+
+public sealed partial class Ricoh2A03
 {
-    public sealed partial class Ricoh2A03
+    private const ushort OamDmaAddress = 0x4014;
+    private readonly DmaUnit _dmaUnit;
+
+    public readonly Mos6502.Mos6502 CpuCore;
+
+    public Ricoh2A03()
     {
-        private const ushort OamDmaAddress = 0x4014;
-        private readonly DmaUnit _dmaUnit;
+        CpuCore = new Mos6502.Mos6502(Mos6502Options.Default);
 
-        public readonly Mos6502.Mos6502 CpuCore;
+        _dmaUnit = new DmaUnit();
+    }
 
-        public Ricoh2A03()
+    public void Cycle()
+    {
+        // TODO: APU stuff.
+
+        ref var pins = ref CpuCore.Pins;
+
+        _dmaUnit.Cycle(ref pins);
+
+        if (_dmaUnit.DmaState != DmaState.Inactive)
         {
-            CpuCore = new Mos6502.Mos6502(Mos6502Options.Default);
-
-            _dmaUnit = new DmaUnit();
+            return;
         }
 
-        public void Cycle()
+        CpuCore.Tick();
+
+        var address = pins.Address;
+
+        if (address >= 0x4000 && address <= 0x401F)
         {
-            // TODO: APU stuff.
-
-            ref var pins = ref CpuCore.Pins;
-
-            _dmaUnit.Cycle(ref pins);
-
-            if (_dmaUnit.DmaState != DmaState.Inactive)
+            if (pins.RW)
             {
-                return;
-            }
-
-            CpuCore.Tick();
-
-            var address = pins.Address;
-
-            if (address >= 0x4000 && address <= 0x401F)
-            {
-                if (pins.RW)
+                pins.Data = address switch
                 {
-                    pins.Data = address switch
-                    {
-                        // Write-only
-                        OamDmaAddress => 0,
+                    // Write-only
+                    OamDmaAddress => 0,
 
+                    // TODO: sound generation and joystick.
+                    _ => 0
+                };
+            }
+            else
+            {
+                switch (address)
+                {
+                    case OamDmaAddress:
+                        _dmaUnit.SetHiByte(pins.Data);
+
+                        // Tell CPU we want to pause it at the next read cycle.
+                        pins.Rdy = true;
+
+                        break;
+
+                    default:
                         // TODO: sound generation and joystick.
-                        _ => 0
-                    };
+                        break;
                 }
-                else
-                {
-                    switch (address)
-                    {
-                        case OamDmaAddress:
-                            _dmaUnit.SetHiByte(pins.Data);
-
-                            // Tell CPU we want to pause it at the next read cycle.
-                            pins.Rdy = true;
-
-                            break;
-
-                        default:
-                            // TODO: sound generation and joystick.
-                            break;
-                    }
-                }
-            }
-
-            // Did CPU become paused on this cycle? If so it means we previously requested it
-            // to pause so that we can start a DMA transfer.
-            if (pins.RW && pins.Rdy)
-            {
-                _dmaUnit.DmaState = DmaState.Pending;
             }
         }
 
-        public IEnumerable<DebuggerWindow> CreateDebuggerWindows()
+        // Did CPU become paused on this cycle? If so it means we previously requested it
+        // to pause so that we can start a DMA transfer.
+        if (pins.RW && pins.Rdy)
         {
-            foreach (var debuggerWindow in CpuCore.CreateDebuggerWindows())
-            {
-                yield return debuggerWindow;
-            }
+            _dmaUnit.DmaState = DmaState.Pending;
+        }
+    }
+
+    public IEnumerable<DebuggerWindow> CreateDebuggerWindows()
+    {
+        foreach (var debuggerWindow in CpuCore.CreateDebuggerWindows())
+        {
+            yield return debuggerWindow;
         }
     }
 }

@@ -18,14 +18,14 @@ public sealed class Intel8080Debugger
     {
         debugger.StepModes.Add(
             new DebuggerStepMode(
-                "Step Instruction", 
-                () => _cpu.Pins.Sync && _cpu.Pins.Data == Intel8080.StatusWordFetch && _cpu.Pins.Address != _startPC, 
+                "Step Instruction",
+                () => _cpu.Pins.Sync && _cpu.Pins.Data == Intel8080.StatusWordFetch && _cpu.Pins.Address != _startPC,
                 () => _startPC = _cpu.Pins.Address));
 
         debugger.StepModes.Add(
             new DebuggerStepMode(
-                "Step CPU Cycle", 
-                () => _cpu.CombinedMachineCycleTypeAndState != _startState, 
+                "Step CPU Cycle",
+                () => _cpu.CombinedMachineCycleTypeAndState != _startState,
                 () => _startState = _cpu.CombinedMachineCycleTypeAndState));
     }
 }

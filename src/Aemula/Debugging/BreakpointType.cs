@@ -1,12 +1,11 @@
-﻿namespace Aemula.Debugging
+﻿namespace Aemula.Debugging;
+
+public enum BreakpointCondition
 {
-    public enum BreakpointCondition
-    {
-        Equal,
-        NotEqual,
-        GreaterThan,
-        GreaterThanOrEqual,
-        LessThan,
-        LessThanOrEqual,
-    }
+    Equal,
+    NotEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+    LessThan,
+    LessThanOrEqual,
 }

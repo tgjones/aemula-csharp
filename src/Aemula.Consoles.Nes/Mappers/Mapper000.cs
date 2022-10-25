@@ -1,6 +1,5 @@
-﻿namespace Aemula.Consoles.Nes.Mappers
+﻿namespace Aemula.Consoles.Nes.Mappers;
+
+internal sealed class Mapper000 : Mapper
 {
-    internal sealed class Mapper000 : Mapper
-    {
-    }
 }

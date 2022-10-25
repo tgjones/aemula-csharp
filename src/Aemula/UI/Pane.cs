@@ -1,10 +1,9 @@
-﻿namespace Aemula.UI
+﻿namespace Aemula.UI;
+
+public enum Pane
 {
-    public enum Pane
-    {
-        None,
-        Left,
-        Bottom,
-        Right,
-    }
+    None,
+    Left,
+    Bottom,
+    Right,
 }

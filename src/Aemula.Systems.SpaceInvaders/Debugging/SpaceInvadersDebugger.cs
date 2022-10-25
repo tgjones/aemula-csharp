@@ -4,52 +4,51 @@ using Aemula.Chips.Intel8080.Debugging;
 using Aemula.Debugging;
 using Aemula.UI;
 
-namespace Aemula.Systems.SpaceInvaders.Debugging
+namespace Aemula.Systems.SpaceInvaders.Debugging;
+
+public sealed class SpaceInvadersDebugger : Debugger
 {
-    public sealed class SpaceInvadersDebugger : Debugger
+    private readonly SpaceInvadersSystem _system;
+    private readonly Intel8080Debugger _intel8080Debugger;
+
+    public SpaceInvadersDebugger(SpaceInvadersSystem system, in DebuggerMemoryCallbacks memoryCallbacks)
+        : base(system, memoryCallbacks)
     {
-        private readonly SpaceInvadersSystem _system;
-        private readonly Intel8080Debugger _intel8080Debugger;
+        _system = system;
 
-        public SpaceInvadersDebugger(SpaceInvadersSystem system, in DebuggerMemoryCallbacks memoryCallbacks) 
-            : base(system, memoryCallbacks)
+        _intel8080Debugger = new Intel8080Debugger(_system.Cpu);
+        _intel8080Debugger.RegisterStepModes(this);
+
+        ActiveStepModeIndex = 0;
+    }
+
+    protected override Disassembler CreateDisassembler()
+    {
+        return new Intel8080Disassembler(MemoryCallbacks);
+    }
+
+    protected override void TickSystem()
+    {
+        base.TickSystem();
+
+        if (_system.Cpu.Pins.Sync && _system.Cpu.Pins.Data == Intel8080.StatusWordFetch)
         {
-            _system = system;
+            OnAddressExecuting(_system.Cpu.Pins.Address);
+        }
+    }
 
-            _intel8080Debugger = new Intel8080Debugger(_system.Cpu);
-            _intel8080Debugger.RegisterStepModes(this);
-
-            ActiveStepModeIndex = 0;
+    public override IEnumerable<DebuggerWindow> CreateDebuggerWindows()
+    {
+        foreach (var debuggerWindow in base.CreateDebuggerWindows())
+        {
+            yield return debuggerWindow;
         }
 
-        protected override Disassembler CreateDisassembler()
+        foreach (var debuggerWindow in _system.Cpu.CreateDebuggerWindows())
         {
-            return new Intel8080Disassembler(MemoryCallbacks);
+            yield return debuggerWindow;
         }
 
-        protected override void TickSystem()
-        {
-            base.TickSystem();
-
-            if (_system.Cpu.Pins.Sync && _system.Cpu.Pins.Data == Intel8080.StatusWordFetch)
-            {
-                OnAddressExecuting(_system.Cpu.Pins.Address);
-            }
-        }
-
-        public override IEnumerable<DebuggerWindow> CreateDebuggerWindows()
-        {
-            foreach (var debuggerWindow in base.CreateDebuggerWindows())
-            {
-                yield return debuggerWindow;
-            }
-
-            foreach (var debuggerWindow in _system.Cpu.CreateDebuggerWindows())
-            {
-                yield return debuggerWindow;
-            }
-
-            yield return new ScreenDisplayWindow(_system.Display);
-        }
+        yield return new ScreenDisplayWindow(_system.Display);
     }
 }
