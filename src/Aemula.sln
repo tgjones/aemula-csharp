@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31521.260
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Computers.BbcMicro", "Aemula.Computers.BbcMicro\Aemula.Computers.BbcMicro.csproj", "{C51C2B1B-8F91-4D9F-A414-86B197AC2E07}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Systems.BbcMicro", "Aemula.Systems.BbcMicro\Aemula.Systems.BbcMicro.csproj", "{C51C2B1B-8F91-4D9F-A414-86B197AC2E07}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Chips.Motorola6845", "Aemula.Chips.Motorola6845\Aemula.Chips.Motorola6845.csproj", "{E36DEA3E-6ABE-4687-98C9-6E7036C51E67}"
 EndProject
@@ -21,11 +21,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Chips.Ricoh2C02", "A
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula", "Aemula\Aemula.csproj", "{07226769-0C6E-4D1A-9B06-F64E6F9587D8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Consoles.Nes", "Aemula.Consoles.Nes\Aemula.Consoles.Nes.csproj", "{34A133F9-1AFB-4538-8D0C-8962C71B293E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Systems.Nes", "Aemula.Systems.Nes\Aemula.Systems.Nes.csproj", "{34A133F9-1AFB-4538-8D0C-8962C71B293E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Chips", "Aemula.Chips\Aemula.Chips.csproj", "{B1B56F11-4A99-4AF1-80CB-C7458A27A5A5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Chips.Ins8154", "Aemula.Chips.Ins8154\Aemula.Chips.Ins8154.csproj", "{B1B56F11-4A99-4AF1-80CB-C7458A27A5A5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Systems", "Aemula.Systems\Aemula.Systems.csproj", "{9B4B12B7-CF16-4976-B434-5CC3CAD5FE8E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Systems.AcornSystem1", "Aemula.Systems.AcornSystem1\Aemula.Systems.AcornSystem1.csproj", "{9B4B12B7-CF16-4976-B434-5CC3CAD5FE8E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Chips.Mos6502.CodeGen", "Aemula.Chips.Mos6502.CodeGen\Aemula.Chips.Mos6502.CodeGen.csproj", "{08D1FACC-145E-44C1-A5D6-705F82E7B5F0}"
 EndProject

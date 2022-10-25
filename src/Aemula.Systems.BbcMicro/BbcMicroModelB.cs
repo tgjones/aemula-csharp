@@ -5,7 +5,7 @@
 //using Aemula.Chips.Motorola6845;
 //using Aemula.Memory;
 
-//namespace Aemula.Computers.BbcMicro
+//namespace Aemula.Systems.BbcMicro
 //{
 //    public sealed class BbcMicroModelB : EmulatedSystem
 //    {

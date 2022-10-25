@@ -1,9 +1,9 @@
 ﻿using Aemula.Chips.Ricoh2A03;
 using Aemula.Chips.Ricoh2C02;
-using Aemula.Consoles.Nes.Debugging;
+using Aemula.Systems.Nes.Debugging;
 using Aemula.Debugging;
 
-namespace Aemula.Consoles.Nes;
+namespace Aemula.Systems.Nes;
 
 public sealed class Nes : EmulatedSystem
 {

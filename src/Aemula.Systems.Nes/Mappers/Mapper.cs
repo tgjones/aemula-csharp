@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Aemula.Consoles.Nes.Mappers;
+namespace Aemula.Systems.Nes.Mappers;
 
 public abstract class Mapper
 {

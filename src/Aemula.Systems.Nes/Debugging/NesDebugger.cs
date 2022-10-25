@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
 using Aemula.Chips.Mos6502.Debugging;
-using Aemula.Consoles.Nes.UI;
+using Aemula.Systems.Nes.UI;
 using Aemula.Debugging;
 using Aemula.UI;
 
-namespace Aemula.Consoles.Nes.Debugging;
+namespace Aemula.Systems.Nes.Debugging;
 
 public sealed class NesDebugger : Debugger
 {

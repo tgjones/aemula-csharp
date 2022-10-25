@@ -1,4 +1,4 @@
-﻿namespace Aemula.Chips.INS8154;
+﻿namespace Aemula.Chips.Ins8154;
 
 public struct Ins8154Pins
 {
@@ -28,7 +28,7 @@ public struct Ins8154Pins
     public bool Nwds; // TODO: Default to true
 }
 
-public sealed class INS8154
+public sealed class Ins8154
 {
     private readonly byte[] _ram = new byte[128];
 

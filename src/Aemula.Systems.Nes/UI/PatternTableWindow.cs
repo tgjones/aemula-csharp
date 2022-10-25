@@ -4,7 +4,7 @@ using Aemula.UI;
 using ImGuiNET;
 using Veldrid;
 
-namespace Aemula.Consoles.Nes.UI;
+namespace Aemula.Systems.Nes.UI;
 
 internal sealed class PatternTableWindow : DebuggerWindow
 {
