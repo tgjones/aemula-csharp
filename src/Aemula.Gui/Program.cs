@@ -74,8 +74,16 @@ namespace Aemula.Gui
 
             while (windowOpen)
             {
-                var deltaTimeSpan = stopwatch.Elapsed - lastTime;
-                lastTime = stopwatch.Elapsed;
+                var elapsed = stopwatch.Elapsed;
+
+                var deltaTimeSpan = elapsed - lastTime;
+                lastTime = elapsed;
+
+                // TODO: Not right.
+                if (deltaTimeSpan.TotalMilliseconds > 17)
+                {
+                    deltaTimeSpan = TimeSpan.FromMilliseconds(17);
+                }
 
                 var deltaTime = (float)deltaTimeSpan.TotalSeconds;
                 var inputSnapshot = window.PumpEvents();
@@ -87,7 +95,7 @@ namespace Aemula.Gui
                     system.OnKeyEvent(keyEvent);
                 }
 
-                var emulatorTime = new EmulatorTime(stopwatch.Elapsed, deltaTimeSpan);
+                var emulatorTime = new EmulatorTime(elapsed, deltaTimeSpan);
 
                 debugger.RunForDuration(deltaTimeSpan);
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Net.NetworkInformation;
 using Aemula.Chips.Intel8080;
 using Aemula.Chips.MB14241;
 using Aemula.Debugging;
@@ -18,8 +19,8 @@ namespace Aemula.Systems.SpaceInvaders
         private readonly MB14241 _shifter;
 
         private byte _lastStatusWord;
+        private ulong _masterClock;
         private uint _pixelClock;
-        private byte _cpuClock;
         private byte _nextInterrupt;
 
         public override ulong CyclesPerSecond => 19968000;
@@ -59,12 +60,35 @@ namespace Aemula.Systems.SpaceInvaders
 
         public override void Tick()
         {
-            _cpuClock++;
+            _masterClock++;
 
-            if (_cpuClock == 10)
+            if (_masterClock % 4 == 0)
+            {
+                _pixelClock++;
+            }
+
+            if (_masterClock % 10 == 0)
             {
                 TickCpu();
-                _cpuClock = 0;
+            }
+
+            if (_pixelClock == 30432 + 10161) // Based on EDL :)
+            {
+                _nextInterrupt = 0xCF;
+                _cpu.Pins.Int = true;
+            }
+
+            if (_pixelClock == 71008 + 10161) // Based on EDL :)
+            {
+                _nextInterrupt = 0xD7;
+                _cpu.Pins.Int = true;
+            }
+
+            if (_pixelClock > 83200)
+            {
+                _pixelClock = 0;
+
+                UpdateDisplay();
             }
         }
 
@@ -157,27 +181,6 @@ namespace Aemula.Systems.SpaceInvaders
                         }
                         break;
                 }
-            }
-
-            _pixelClock++;
-
-            if (_pixelClock == 30432 + 10161) // Based on EDL :)
-            {
-                _nextInterrupt = 0xCF;
-                pins.Int = true;
-            }
-
-            if (_pixelClock == 71008 + 10161) // Based on EDL :)
-            {
-                _nextInterrupt = 0xD7;
-                pins.Int = true;
-            }
-
-            if (_pixelClock > 83200)
-            {
-                _pixelClock = 0;
-
-                UpdateDisplay();
             }
         }
 
