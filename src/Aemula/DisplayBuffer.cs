@@ -15,5 +15,10 @@ public sealed class DisplayBuffer
         Height = height;
 
         Data = new RgbaByte[width * height];
+
+        for (var i = 0; i < Data.Length; i++)
+        {
+            Data[i] = new RgbaByte(0, 0, 0, 255);
+        }
     }
 }

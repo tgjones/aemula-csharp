@@ -50,9 +50,30 @@ public sealed class ScreenDisplayWindow : DebuggerWindow
             _displayBuffer.Height,
             1, 0, 0);
 
-        ImGui.Image(
-            _textureBinding,
-            new Vector2(_texture.Width, _texture.Height));
+        var size = new Vector2(_texture.Height, _texture.Width);
+
+        var cursorPos = ImGui.GetCursorPos();
+        cursorPos.X += ImGui.GetWindowContentRegionWidth() / 2;
+        cursorPos.Y += ImGui.GetWindowHeight() / 2;
+
+        var uv0 = new Vector2(1, 0);
+        var uv1 = new Vector2(1, 1);
+        var uv2 = new Vector2(0, 1);
+        var uv3 = new Vector2(0, 0);
+
+        var p1 = cursorPos;
+        var p2 = new Vector2(cursorPos.X + size.X, cursorPos.Y);
+        var p3 = new Vector2(cursorPos.X + size.X, cursorPos.Y + size.Y);
+        var p4 = new Vector2(cursorPos.X, cursorPos.Y + size.Y);
+
+        ImGui.GetWindowDrawList().AddImageQuad(
+            _textureBinding, 
+            p1, p2, p3, p4, 
+            uv0, uv1, uv2, uv3);
+
+        //ImGui.Image(
+        //    _textureBinding,
+        //    new Vector2(_texture.Width, _texture.Height));
     }
 
     public override void Dispose()
