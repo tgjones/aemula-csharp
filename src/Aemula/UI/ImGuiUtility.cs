@@ -12,6 +12,14 @@ public static unsafe class ImGuiUtility
 {
     private const int StackAllocationSizeLimit = 2048;
 
+    public static void SetupDocking()
+    {
+        ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
+
+        // Need to reload .ini file as described in https://github.com/mellinoe/veldrid/issues/410
+        ImGui.LoadIniSettingsFromDisk(ImGui.GetIO().IniFilename);
+    }
+
     public static bool InputUInt16(string label, ref ushort value)
     {
         var input = value.ToString("X4");

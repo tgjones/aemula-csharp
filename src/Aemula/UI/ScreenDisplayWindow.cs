@@ -54,9 +54,14 @@ public sealed class ScreenDisplayWindow : DebuggerWindow
 
         if (_angle == 0)
         {
+            var availableSize = ImGui.GetContentRegionAvail();
+            var finalSize = CalculateSizeFittingAspectRatio(
+                new Vector2(_texture.Width, _texture.Height),
+                availableSize);
+
             ImGui.Image(
                 _textureBinding,
-                new Vector2(_texture.Width, _texture.Height));
+                finalSize);
 
             return;
         }
@@ -81,6 +86,20 @@ public sealed class ScreenDisplayWindow : DebuggerWindow
             _textureBinding, 
             p1, p2, p3, p4, 
             uv0, uv1, uv2, uv3);
+    }
+
+    private static Vector2 CalculateSizeFittingAspectRatio(
+        in Vector2 boundsSize,
+        in Vector2 viewportSize)
+    {
+        // Figure out the ratio.
+        var ratioX = viewportSize.X / boundsSize.X;
+        var ratioY = viewportSize.Y / boundsSize.Y;
+
+        // Use whichever multiplier is smaller.
+        var ratio = ratioX < ratioY ? ratioX : ratioY;
+
+        return boundsSize * ratio;
     }
 
     public override void Dispose()

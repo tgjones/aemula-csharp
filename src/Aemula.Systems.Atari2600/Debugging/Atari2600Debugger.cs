@@ -9,14 +9,52 @@ internal sealed class Atari2600Debugger : Debugger
 {
     private static readonly Dictionary<ushort, string> Equates = new()
     {
-        //{ 0x2000, "PPU_CTRL" },
-        //{ 0x2001, "PPU_MASK" },
-        //{ 0x2002, "PPU_STATUS" },
-        //{ 0x2003, "OAM_ADDR" },
-        //{ 0x2004, "OAM_DATA" },
-        //{ 0x2005, "PPU_SCROLL" },
-        //{ 0x2006, "PPU_ADDR" },
-        //{ 0x2007, "PPU_DATA" },
+        // TIA write
+        { 0x0000, "VSYNC" },
+        { 0x0001, "VBLANK" },
+        { 0x0002, "WSYNC" },
+        { 0x0003, "RSYNC" },
+        { 0x0004, "NUSIZ0" },
+        { 0x0005, "NUSIZ1" },
+        { 0x0006, "COLUP0" },
+        { 0x0007, "COLUP1" },
+        { 0x0008, "COLUPF" },
+        { 0x0009, "COLUBK" },
+        { 0x000A, "CTRLPF" },
+        { 0x000B, "REFP0" },
+        { 0x000C, "REFP1" },
+        { 0x000D, "PF0" },
+        { 0x000E, "PF1" },
+        { 0x000F, "PF2" },
+        { 0x0010, "RESP0" },
+        { 0x0011, "RESP1" },
+        { 0x0012, "RESM0" },
+        { 0x0013, "RESM1" },
+        { 0x0014, "RESBL" },
+        { 0x0015, "AUDC0" },
+        { 0x0016, "AUDC1" },
+        { 0x0017, "AUDF0" },
+        { 0x0018, "AUDF1" },
+        { 0x0019, "AUDV0" },
+        { 0x001A, "AUDV1" },
+        { 0x001B, "GRP0" },
+        { 0x001C, "GRP1" },
+        { 0x001D, "ENAM0" },
+        { 0x001E, "ENAM1" },
+        { 0x001F, "ENABL" },
+        { 0x0020, "HMP0" },
+        { 0x0021, "HMP1" },
+        { 0x0022, "HMM0" },
+        { 0x0023, "HMM1" },
+        { 0x0024, "HMBL" },
+        { 0x0025, "VDELP0" },
+        { 0x0026, "VDELP1" },
+        { 0x0027, "VDELBL" },
+        { 0x0028, "RESMP0" },
+        { 0x0029, "RESMP1" },
+        { 0x002A, "HMOVE" },
+        { 0x002B, "HMCLR" },
+        { 0x002C, "CXCLR" },
     };
 
     private readonly Atari2600 _system;
@@ -30,7 +68,7 @@ internal sealed class Atari2600Debugger : Debugger
         _mos6502Debugger = new Mos6502Debugger(system.Cpu);
         _mos6502Debugger.RegisterStepModes(this);
 
-        StepModes.Add(new DebuggerStepMode("Step PPU Cycle", () => true));
+        StepModes.Add(new DebuggerStepMode("Step Color Cycle", () => true));
     }
 
     private static DebuggerMemoryCallbacks CreateMemoryCallbacks(Atari2600 system)

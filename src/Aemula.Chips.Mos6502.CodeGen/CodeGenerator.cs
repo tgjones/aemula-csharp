@@ -118,7 +118,14 @@ public class CodeGenerator : ISourceGenerator
                 case 1:
                     sb.AppendLine("                    var operand = readMemory((ushort)(address + 1));");
                     rawBytes = "$\"{opcode:X2} {operand:X2}\"";
-                    formattedOperand = $" {addressingModeDescription.OperandPrefix}${{operand:X2}}{addressingModeDescription.OperandSuffix}";
+                    if (addressingModeDescription.OperandIsAddress)
+                    {
+                        formattedOperand = $" {addressingModeDescription.OperandPrefix}{{(equates.TryGetValue(operand, out var equate) ? equate : \"$\" + operand.ToString(\"X2\"))}}{addressingModeDescription.OperandSuffix}";
+                    }
+                    else
+                    {
+                        formattedOperand = $" {addressingModeDescription.OperandPrefix}${{operand:X2}}{addressingModeDescription.OperandSuffix}";
+                    }
                     break;
 
                 case 2:
@@ -126,7 +133,14 @@ public class CodeGenerator : ISourceGenerator
                     sb.AppendLine("                    var operandHi = readMemory((ushort)(address + 2));");
                     sb.AppendLine("                    var operand = (ushort)((operandHi << 8) | operandLo);");
                     rawBytes = "$\"{opcode:X2} {operandLo:X2} {operandHi:X2}\"";
-                    formattedOperand = $" {addressingModeDescription.OperandPrefix}{{(equates.TryGetValue(operand, out var equate) ? equate : \"$\" + operand.ToString(\"X4\"))}}{addressingModeDescription.OperandSuffix}";
+                    if (addressingModeDescription.OperandIsAddress)
+                    {
+                        formattedOperand = $" {addressingModeDescription.OperandPrefix}{{(equates.TryGetValue(operand, out var equate) ? equate : \"$\" + operand.ToString(\"X4\"))}}{addressingModeDescription.OperandSuffix}";
+                    }
+                    else
+                    {
+                        formattedOperand = $" {addressingModeDescription.OperandPrefix}${{operand:X4}}{addressingModeDescription.OperandSuffix}";
+                    }
                     break;
 
                 default:
@@ -222,17 +236,20 @@ public class CodeGenerator : ISourceGenerator
     {
         public readonly string DisplayName;
         public readonly int NumOperands;
+        public readonly bool OperandIsAddress;
         public readonly string OperandPrefix;
         public readonly string OperandSuffix;
 
         public AddressingModeDescription(
             string displayName,
             int numOperands,
+            bool operandIsAddress,
             string operandPrefix,
             string operandSuffix)
         {
             DisplayName = displayName;
             NumOperands = numOperands;
+            OperandIsAddress = operandIsAddress;
             OperandPrefix = operandPrefix;
             OperandSuffix = operandSuffix;
         }
@@ -240,20 +257,20 @@ public class CodeGenerator : ISourceGenerator
 
     private static readonly Dictionary<AddressingMode, AddressingModeDescription> AddressingModeDescriptions = new Dictionary<AddressingMode, AddressingModeDescription>
     {
-        { AddressingMode.None, new AddressingModeDescription("", 0, "", "") },
-        { AddressingMode.Accumulator, new AddressingModeDescription("", 0, "", "") },
-        { AddressingMode.Immediate, new AddressingModeDescription("#", 1, "#", "") },
-        { AddressingMode.ZeroPage, new AddressingModeDescription("zp", 1, "", "") },
-        { AddressingMode.ZeroPageX, new AddressingModeDescription("zp,X", 1, "", ",X") },
-        { AddressingMode.ZeroPageY, new AddressingModeDescription("zp,Y", 1, "", ",Y") },
-        { AddressingMode.Absolute, new AddressingModeDescription("abs", 2, "", "") },
-        { AddressingMode.AbsoluteX, new AddressingModeDescription("abs,X", 2, "", ",X") },
-        { AddressingMode.AbsoluteY, new AddressingModeDescription("abs,Y", 2, "", ",Y") },
-        { AddressingMode.IndexedIndirectX, new AddressingModeDescription("(zp,X)", 1, "(", ",X)") },
-        { AddressingMode.IndirectIndexedY, new AddressingModeDescription("(zp),Y", 1, "(", "),Y") },
-        { AddressingMode.Indirect, new AddressingModeDescription("ind", 2, "(", ")") },
-        { AddressingMode.Jsr, new AddressingModeDescription("", 2, "", "") },
-        { AddressingMode.Invalid, new AddressingModeDescription("invalid", 0, "", "") },
+        { AddressingMode.None, new AddressingModeDescription("", 0, false, "", "") },
+        { AddressingMode.Accumulator, new AddressingModeDescription("", 0, false, "", "") },
+        { AddressingMode.Immediate, new AddressingModeDescription("#", 1, false, "#", "") },
+        { AddressingMode.ZeroPage, new AddressingModeDescription("zp", 1, true, "", "") },
+        { AddressingMode.ZeroPageX, new AddressingModeDescription("zp,X", 1, true, "", ",X") },
+        { AddressingMode.ZeroPageY, new AddressingModeDescription("zp,Y", 1, true, "", ",Y") },
+        { AddressingMode.Absolute, new AddressingModeDescription("abs", 2, true, "", "") },
+        { AddressingMode.AbsoluteX, new AddressingModeDescription("abs,X", 2, true, "", ",X") },
+        { AddressingMode.AbsoluteY, new AddressingModeDescription("abs,Y", 2, true, "", ",Y") },
+        { AddressingMode.IndexedIndirectX, new AddressingModeDescription("(zp,X)", 1, true, "(", ",X)") },
+        { AddressingMode.IndirectIndexedY, new AddressingModeDescription("(zp),Y", 1, true, "(", "),Y") },
+        { AddressingMode.Indirect, new AddressingModeDescription("ind", 2, true, "(", ")") },
+        { AddressingMode.Jsr, new AddressingModeDescription("", 2, true, "", "") },
+        { AddressingMode.Invalid, new AddressingModeDescription("invalid", 0, false, "", "") },
     };
 
     private enum MemoryAccess

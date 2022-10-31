@@ -70,7 +70,7 @@ public static class Program
 
         system.LoadProgram(args[1]);
 
-        ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
+        ImGuiUtility.SetupDocking();
 
         while (windowOpen)
         {
@@ -135,42 +135,42 @@ public static class Program
 
     private static unsafe void DrawWindow(DebuggerWindow[] windows)
     {
-        const ImGuiDockNodeFlags dockSpaceFlags = ImGuiDockNodeFlags.PassthruCentralNode;
+        const ImGuiDockNodeFlags dockSpaceFlags = ImGuiDockNodeFlags.None;
 
         var viewport = ImGui.GetMainViewport();
         var dockSpaceId = ImGui.DockSpaceOverViewport(viewport, dockSpaceFlags);
 
-        if (_firstTime)
-        {
-            _firstTime = false;
+        //if (_firstTime)
+        //{
+        //    _firstTime = false;
 
-            ImGuiExtra.DockBuilderRemoveNode(dockSpaceId);
-            ImGuiExtra.DockBuilderAddNode(dockSpaceId, dockSpaceFlags | ImGuiExtra.ImGuiDockNodeFlags_DockSpace);
-            ImGuiExtra.DockBuilderSetNodeSize(dockSpaceId, viewport.Size);
+        //    ImGuiExtra.DockBuilderRemoveNode(dockSpaceId);
+        //    ImGuiExtra.DockBuilderAddNode(dockSpaceId, dockSpaceFlags | ImGuiExtra.ImGuiDockNodeFlags_DockSpace);
+        //    ImGuiExtra.DockBuilderSetNodeSize(dockSpaceId, viewport.Size);
 
-            var dockIdLeft = ImGuiExtra.DockBuilderSplitNode(dockSpaceId, ImGuiDir.Left, 0.2f, out _, out dockSpaceId);
-            var dockIdRight = ImGuiExtra.DockBuilderSplitNode(dockSpaceId, ImGuiDir.Right, 0.4f, out _, out dockSpaceId);
-            var dockIdDown = ImGuiExtra.DockBuilderSplitNode(dockSpaceId, ImGuiDir.Down, 0.25f, out _, out dockSpaceId);
+        //    var dockIdLeft = ImGuiExtra.DockBuilderSplitNode(dockSpaceId, ImGuiDir.Left, 0.2f, out _, out dockSpaceId);
+        //    var dockIdRight = ImGuiExtra.DockBuilderSplitNode(dockSpaceId, ImGuiDir.Right, 0.4f, out _, out dockSpaceId);
+        //    var dockIdDown = ImGuiExtra.DockBuilderSplitNode(dockSpaceId, ImGuiDir.Down, 0.25f, out _, out dockSpaceId);
 
-            foreach (var window in windows)
-            {
-                uint? dockId = window.PreferredPane switch
-                {
-                    Pane.Left => dockIdLeft,
-                    Pane.Bottom => dockIdDown,
-                    Pane.Right => dockIdRight,
-                    _ => null,
-                };
-                if (dockId != null)
-                {
-                    ImGuiExtra.DockBuilderDockWindow($"{window.DisplayName}##{window.Name}", dockId.Value);
-                }
-            }
+        //    foreach (var window in windows)
+        //    {
+        //        uint? dockId = window.PreferredPane switch
+        //        {
+        //            Pane.Left => dockIdLeft,
+        //            Pane.Bottom => dockIdDown,
+        //            Pane.Right => dockIdRight,
+        //            _ => null,
+        //        };
+        //        if (dockId != null)
+        //        {
+        //            ImGuiExtra.DockBuilderDockWindow($"{window.DisplayName}##{window.Name}", dockId.Value);
+        //        }
+        //    }
 
-            ImGuiExtra.DockBuilderFinish(dockSpaceId);
-        }
+        //    ImGuiExtra.DockBuilderFinish(dockSpaceId);
+        //}
 
-        ImGui.End();
+        //ImGui.End();
     }
 
     private static void DrawMainMenu(DebuggerWindow[] debuggerWindows)

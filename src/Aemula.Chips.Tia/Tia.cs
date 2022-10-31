@@ -41,7 +41,9 @@ public sealed class Tia
     private byte _playfieldIndex;
 
     private bool _playfieldCanReflect;
+
     private bool _playfieldReflect;
+    private bool _playfieldScore;
 
     private byte _playfieldColor;
     private byte _playfieldLuminance;
@@ -195,8 +197,26 @@ public sealed class Tia
 
         if (shouldOutputPlayfield)
         {
-            Pins.Lum = _playfieldLuminance;
-            Pins.Col = _playfieldColor;
+            if (_playfieldScore)
+            {
+                // Display the left side of the playfield using the color of sprite 0,
+                // and the right side of the playfield using the color of sprite 1.
+                if (_playfieldCanReflect)
+                {
+                    Pins.Lum = _playerAndMissile1.Luminance;
+                    Pins.Col = _playerAndMissile1.Color;
+                }
+                else
+                {
+                    Pins.Lum = _playerAndMissile0.Luminance;
+                    Pins.Col = _playerAndMissile0.Color;
+                }
+            }
+            else
+            {
+                Pins.Lum = _playfieldLuminance;
+                Pins.Col = _playfieldColor;
+            }
         }
         else
         {
@@ -306,17 +326,24 @@ public sealed class Tia
                 case 0x0A:
                     // TODO
                     _playfieldReflect = GetBitAsBoolean(pins.Data05, 0);
+                    _playfieldScore = GetBitAsBoolean(pins.Data05, 1);
                     break;
 
                 // REFP0 - Reflect player 0
                 case 0x0B:
+                    _playerAndMissile0.Reflect = GetBitAsBoolean(pins.Data05, 3);
                     break;
 
                 // REFP1 - Reflect player 1
                 case 0x0C:
+                    _playerAndMissile1.Reflect = GetBitAsBoolean(pins.Data05, 3);
                     break;
 
                 // PF0 - Playfield register byte 0
+                //   D4 => PF19
+                //   D5 => PF18
+                //   D6 => PF17
+                //   D7 => PF16
                 case 0x0D:
                     {
                         var temp =
@@ -324,19 +351,35 @@ public sealed class Tia
                             (GetBit(pins.Data05, 5) << 2) |
                             (GetBit(pins.Data67, 0) << 1) |
                             (GetBit(pins.Data67, 1) << 0);
-                        _playfield = (byte)((temp << 16) | (_playfield & 0xFFFF));
+                        _playfield = (ushort)((temp << 16) | (_playfield & 0xFFFF));
                         break;
                     }
 
                 // PF1 - Playfield register byte 1
+                //   D0 => PF08
+                //   D1 => PF09
+                //   D2 => PF10
+                //   D3 => PF11
+                //   D4 => PF12
+                //   D5 => PF13
+                //   D6 => PF14
+                //   D7 => PF15
                 case 0x0E:
                     {
                         var temp = (byte)(pins.Data05 | (pins.Data67 << 6));
-                        _playfield = (byte)((_playfield & 0xF0000) | (temp << 8) | (_playfield & 0xFF));
+                        _playfield = (ushort)((_playfield & 0xF00FF) | (temp << 8));
                         break;
                     }
 
                 // PF2 - Playfield register byte 2
+                //   D0 => P7
+                //   D1 => P6
+                //   D2 => P5
+                //   D3 => P4
+                //   D4 => P3
+                //   D5 => P2
+                //   D6 => P1
+                //   D7 => P0
                 case 0x0F:
                     {
                         var temp =
@@ -348,7 +391,7 @@ public sealed class Tia
                             (GetBit(pins.Data05, 5) << 2) |
                             (GetBit(pins.Data67, 0) << 1) |
                             (GetBit(pins.Data67, 1) << 0);
-                        _playfield = (byte)((_playfield & 0xFFF00) | temp);
+                        _playfield = (ushort)((_playfield & 0xFFF00) | temp);
                         break;
                     }
 
