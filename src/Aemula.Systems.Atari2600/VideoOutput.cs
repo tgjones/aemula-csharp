@@ -91,7 +91,7 @@ internal sealed class VideoOutput
                 return;
             }
 
-            var paletteIndex = tiaPins.Lum | (tiaPins.Col << 3);
+            var paletteIndex = (tiaPins.Lum & 0b111) | ((tiaPins.Col & 0xF) << 3);
             var color = Palette.NtscPalette[paletteIndex];
 
             var positionY = (int)Math.Round(_currentVisibleScanlines - ((_numVisibleScanlines - _viewportHeight) / 2.0f));
@@ -100,10 +100,10 @@ internal sealed class VideoOutput
             if (videoDataIndex > 0 && videoDataIndex < (Width * _viewportHeight))
             {
                 DisplayBuffer.Data[videoDataIndex] = new Veldrid.RgbaByte(
-                    (byte)((color >> 0) & 0xFF),  // R
+                    (byte)((color >> 16) & 0xFF), // R
                     (byte)((color >> 8) & 0xFF),  // G
-                    (byte)((color >> 16) & 0xFF), // B
-                    0xFF);                // A
+                    (byte)((color >> 0) & 0xFF),  // B
+                    0xFF);                        // A
             }
 
             _currentPos++;
