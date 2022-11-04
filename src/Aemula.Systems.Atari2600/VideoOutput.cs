@@ -24,7 +24,7 @@ internal sealed class VideoOutput
     private ushort _currentVisibleScanlines;
     private bool _scanlineContainedNonBlank;
 
-    public DisplayBuffer DisplayBuffer { get; private set; }
+    public readonly DisplayBuffer DisplayBuffer;
 
     public VideoOutput()
     {
@@ -33,11 +33,6 @@ internal sealed class VideoOutput
         _viewportHeight = 192;
         _lastTotalScanlines = 192;
 
-        CreateOutputBuffer();
-    }
-
-    private void CreateOutputBuffer()
-    {
         DisplayBuffer = new DisplayBuffer(Width, _viewportHeight);
     }
 
@@ -56,8 +51,8 @@ internal sealed class VideoOutput
                     if (_frame > 5 && _currentVisibleScanlines > _numVisibleScanlines)
                     {
                         _numVisibleScanlines = _currentVisibleScanlines;
-                        _viewportHeight = Math.Min(_currentVisibleScanlines, (ushort)210);
-                        CreateOutputBuffer();
+                        _viewportHeight = Math.Min(_currentVisibleScanlines, (ushort)260);
+                        DisplayBuffer.Resize(Width, _viewportHeight);
                     }
 
                     // We just finished a vsync

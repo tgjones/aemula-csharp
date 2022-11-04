@@ -4,7 +4,7 @@ using Veldrid;
 
 namespace Aemula;
 
-public abstract class EmulatedSystem
+public abstract class EmulatedSystem : IDisposable
 {
     public event EventHandler ProgramLoaded;
 
@@ -34,4 +34,12 @@ public abstract class EmulatedSystem
     public virtual void OnKeyEvent(KeyEvent keyEvent) { }
 
     public virtual Debugger CreateDebugger() => null;
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+        OnDispose();
+    }
+
+    protected virtual void OnDispose() { }
 }

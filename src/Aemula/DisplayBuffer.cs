@@ -4,12 +4,17 @@ namespace Aemula;
 
 public sealed class DisplayBuffer
 {
-    public readonly uint Width;
-    public readonly uint Height;
+    public uint Width { get; private set; }
+    public uint Height { get; private set; }
 
-    public readonly RgbaByte[] Data;
+    public RgbaByte[] Data { get; private set; }
 
     public DisplayBuffer(uint width, uint height)
+    {
+        Resize(width, height);
+    }
+
+    public void Resize(uint width, uint height)
     {
         Width = width;
         Height = height;

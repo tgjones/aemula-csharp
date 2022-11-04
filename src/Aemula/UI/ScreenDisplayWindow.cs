@@ -11,6 +11,7 @@ public sealed class ScreenDisplayWindow : DebuggerWindow
     private readonly int _angle;
 
     private GraphicsDevice _graphicsDevice;
+    private ImGuiRenderer _renderer;
     private Texture _texture;
     private IntPtr _textureBinding;
 
@@ -27,8 +28,19 @@ public sealed class ScreenDisplayWindow : DebuggerWindow
         base.CreateGraphicsResources(graphicsDevice, renderer);
 
         _graphicsDevice = graphicsDevice;
+        _renderer = renderer;
 
-        _texture = graphicsDevice.ResourceFactory.CreateTexture(
+        CreateTexture();
+    }
+
+    private void CreateTexture()
+    {
+        if (_texture != null)
+        {
+            _texture.Dispose();
+        }
+
+        _texture = _graphicsDevice.ResourceFactory.CreateTexture(
             TextureDescription.Texture2D(
                 _displayBuffer.Width,
                 _displayBuffer.Height,
@@ -37,13 +49,18 @@ public sealed class ScreenDisplayWindow : DebuggerWindow
                 PixelFormat.R8_G8_B8_A8_UNorm,
                 TextureUsage.Sampled));
 
-        _textureBinding = renderer.GetOrCreateImGuiBinding(
-            graphicsDevice.ResourceFactory,
+        _textureBinding = _renderer.GetOrCreateImGuiBinding(
+            _graphicsDevice.ResourceFactory,
             _texture);
     }
 
     protected override void DrawOverride(EmulatorTime time)
     {
+        if (_displayBuffer.Width != _texture.Width || _displayBuffer.Height != _texture.Height)
+        {
+            CreateTexture();
+        }
+
         _graphicsDevice.UpdateTexture(
             _texture,
             _displayBuffer.Data,
