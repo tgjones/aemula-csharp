@@ -12,10 +12,11 @@ internal sealed class PlayerAndMissile
     public byte NumberSizePlayer;
     public byte NumberSizeMissile;
     public bool Reflect;
+    public byte HorizontalMotionPlayer = 0b1000; // Stored with bit 3 inverted
 
     // State
     public byte PlayerClockDiv4;
-    private byte _counter;
+    private PolynomialCounter _counter;
     public bool Reset;
     private bool _draw;
     private byte _graphicsDelay;
@@ -29,11 +30,11 @@ internal sealed class PlayerAndMissile
         {
             PlayerClockDiv4 = 0;
 
-            _counter = UpdatePolynomialCounter(_counter);
-            if (_counter == 0b111111 || Reset)
+            _counter.Increment();
+            if (_counter.Value == 0b111111 || Reset)
             {
                 Reset = false;
-                _counter = 0;
+                _counter.Reset();
             }
 
             ExecutePlayerLogic();
@@ -42,7 +43,7 @@ internal sealed class PlayerAndMissile
 
     private void ExecutePlayerLogic()
     {
-        switch (_counter)
+        switch (_counter.Value)
         {
             case 0b111000 when NumberSizePlayer == 0b001 || NumberSizePlayer == 0b011:
             case 0b101111 when NumberSizePlayer == 0b011 || NumberSizePlayer == 0b010 || NumberSizePlayer == 0b110:

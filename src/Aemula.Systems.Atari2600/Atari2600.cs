@@ -1,8 +1,11 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using Aemula.Chips.Mos6532;
 using Aemula.Chips.Tia;
 using Aemula.Debugging;
 using Aemula.Systems.Atari2600.Debugging;
+using Aemula.UI;
 using static Aemula.BitUtility;
 
 namespace Aemula.Systems.Atari2600;
@@ -11,6 +14,8 @@ public sealed class Atari2600 : EmulatedSystem
 {
     // 3.58 MHZ
     public override ulong CyclesPerSecond => 3580000;
+
+    private readonly BinaryWriter _ntscWriter;
 
     private readonly Mos6507 _cpu;
     private readonly Mos6532 _riot;
@@ -36,6 +41,13 @@ public sealed class Atari2600 : EmulatedSystem
 
         // TODO: Remove this - it sets B&W pin to Color.
         _riot.Pins.DB = 0b1000;
+
+        if (File.Exists("ntsc.tv"))
+        {
+            File.Delete("ntsc.tv");
+        }
+
+        _ntscWriter = new BinaryWriter(File.OpenWrite("ntsc.tv"));
     }
 
     public override void Reset()
@@ -100,6 +112,34 @@ public sealed class Atari2600 : EmulatedSystem
 
         // TIA can pause CPU.
         _cpu.Pins.Rdy = _tia.Pins.Rdy;
+
+        // Prepare composite video output.
+        byte ntscSignal;
+        if (_tia.Pins.Sync)
+        {
+            ntscSignal = 0;
+        }
+        else if (_tia.Pins.Blk)
+        {
+            ntscSignal = ConvertRange(0, 140, 0, 240, 40);
+        }
+        else
+        {
+            ntscSignal = ConvertRange(0, 7, (byte)((45 / 140.0f) * 240.0f), 240, _tia.Pins.Lum);
+        }
+        for (var i = 0; i < 4; i++)
+        {
+            _ntscWriter.Write(ntscSignal);
+        }
+    }
+
+    private static byte ConvertRange(
+        byte originalStart, byte originalEnd, // original range
+        byte newStart, byte newEnd, // desired range
+        byte value) // value to convert
+    {
+        var scale = (float)(newEnd - newStart) / (originalEnd - originalStart);
+        return (byte)(newStart + ((value - originalStart) * scale));
     }
 
     private void DoCpuCycle()
@@ -166,5 +206,23 @@ public sealed class Atari2600 : EmulatedSystem
     public override Debugger CreateDebugger()
     {
         return new Atari2600Debugger(this);
+    }
+
+    internal IEnumerable<DebuggerWindow> CreateDebuggerWindows()
+    {
+        foreach (var debuggerWindow in Cpu.CreateDebuggerWindows())
+        {
+            yield return debuggerWindow;
+        }
+
+        foreach (var debuggerWindow in _tia.CreateDebuggerWindows())
+        {
+            yield return debuggerWindow;
+        }
+    }
+
+    protected override void OnDispose()
+    {
+        _ntscWriter.Dispose();
     }
 }

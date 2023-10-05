@@ -98,7 +98,7 @@ internal sealed class Atari2600Debugger : Debugger
             yield return debuggerWindow;
         }
 
-        foreach (var debuggerWindow in _system.Cpu.CreateDebuggerWindows())
+        foreach (var debuggerWindow in _system.CreateDebuggerWindows())
         {
             yield return debuggerWindow;
         }

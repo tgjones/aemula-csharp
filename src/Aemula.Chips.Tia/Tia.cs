@@ -1,4 +1,7 @@
-﻿using static Aemula.BitUtility;
+﻿using System.Collections.Generic;
+using Aemula.Chips.Tia.UI;
+using Aemula.UI;
+using static Aemula.BitUtility;
 using static Aemula.Chips.Tia.TiaUtility;
 
 namespace Aemula.Chips.Tia;
@@ -7,14 +10,14 @@ public sealed class Tia
 {
     public TiaPins Pins;
 
-    private bool _vsync;
-    private bool _vblank;
+    internal bool VerticalSync;
+    internal bool VerticalBlank;
 
-    private bool _hsync;
+    internal bool HorizontalSync;
+    internal bool HorizontalBlank;
 
-    private byte _horizontalCounter;
+    internal PolynomialCounter HorizontalCounter;
     private bool _horizontalReset;
-    private bool _horizontalBlank;
 
     /// <summary>
     /// Controls whether latches I4..I5 are enabled.
@@ -33,8 +36,8 @@ public sealed class Tia
 
     internal byte ClockDiv4;
 
-    private PlayerAndMissile _playerAndMissile0;
-    private PlayerAndMissile _playerAndMissile1;
+    internal readonly PlayerAndMissile PlayerAndMissile0;
+    internal readonly PlayerAndMissile PlayerAndMissile1;
 
     private bool _playerCounterEnable;
 
@@ -57,17 +60,10 @@ public sealed class Tia
     private byte _hmoveComparator;
     private bool _hmoveCounterEnabled;
 
-    // Horizontal motion registers are stored with bit 3 inverted
-    private byte _hmp0;
-    private byte _hmp1;
-
     public Tia()
     {
-        _playerAndMissile0 = new PlayerAndMissile();
-        _playerAndMissile1 = new PlayerAndMissile();
-
-        _hmp0 = 0b1000;
-        _hmp1 = 0b1000;
+        PlayerAndMissile0 = new PlayerAndMissile();
+        PlayerAndMissile1 = new PlayerAndMissile();
     }
 
     public void Cycle()
@@ -79,15 +75,15 @@ public sealed class Tia
         {
             ClockDiv4 = 0;
 
-            _horizontalCounter = UpdatePolynomialCounter(_horizontalCounter);
+            HorizontalCounter.Increment();
 
-            if (_horizontalCounter == 0b111111 || _horizontalReset)
+            if (HorizontalCounter.Value == 0b111111 || _horizontalReset)
             {
                 _playfieldCanReflect = false;
                 _playfieldIndex = 0;
                 _horizontalReset = false;
-                _horizontalCounter = 0;
-                _horizontalBlank = true;
+                HorizontalCounter.Reset();
+                HorizontalBlank = true;
                 Pins.Rdy = false;
             }
 
@@ -95,12 +91,12 @@ public sealed class Tia
 
             if (_hmoveCounterEnabled)
             {
-                if (NoneEqual(_hmoveComparator, _hmp0))
+                if (NoneEqual(_hmoveComparator, PlayerAndMissile0.HorizontalMotionPlayer))
                 {
                     _hmp0Latch = false;
                 }
 
-                if (NoneEqual(_hmoveComparator, _hmp1))
+                if (NoneEqual(_hmoveComparator, PlayerAndMissile1.HorizontalMotionPlayer))
                 {
                     _hmp1Latch = false;
                 }
@@ -114,37 +110,37 @@ public sealed class Tia
 
             if (_hmp0Latch)
             {
-                _playerAndMissile0.UpdatePlayerDiv4();
+                PlayerAndMissile0.UpdatePlayerDiv4();
             }
 
             if (_hmp1Latch)
             {
-                _playerAndMissile1.UpdatePlayerDiv4();
+                PlayerAndMissile1.UpdatePlayerDiv4();
             }
         }
 
         if (_playerCounterEnable)
         {
-            _playerAndMissile0.UpdatePlayerDiv4();
-            _playerAndMissile1.UpdatePlayerDiv4();
+            PlayerAndMissile0.UpdatePlayerDiv4();
+            PlayerAndMissile1.UpdatePlayerDiv4();
         }
 
         DoPlayfield();
 
-        Pins.Blk = _vblank || _horizontalBlank;
-        Pins.Sync = _vsync || _hsync;
+        Pins.Blk = VerticalBlank || HorizontalBlank;
+        Pins.Sync = VerticalSync || HorizontalSync;
     }
 
     private void ExecuteClockLogic()
     {
-        switch (_horizontalCounter)
+        switch (HorizontalCounter.Value)
         {
             case 0b111100: // Set HSYNC
-                _hsync = true;
+                HorizontalSync = true;
                 break;
 
             case 0b110111: // Reset HSYNC
-                _hsync = false;
+                HorizontalSync = false;
                 break;
 
             case 0b001111: // ColorBurst
@@ -154,7 +150,7 @@ public sealed class Tia
                 _playfieldIndex = 0;
                 if (!_hmove)
                 {
-                    _horizontalBlank = false;
+                    HorizontalBlank = false;
                     _playerCounterEnable = true;
                 }
                 break;
@@ -163,7 +159,7 @@ public sealed class Tia
                 _playfieldIndex = 2;
                 if (_hmove)
                 {
-                    _horizontalBlank = false;
+                    HorizontalBlank = false;
                     _playerCounterEnable = true;
                 }
                 break;
@@ -203,13 +199,13 @@ public sealed class Tia
                 // and the right side of the playfield using the color of sprite 1.
                 if (_playfieldCanReflect)
                 {
-                    Pins.Lum = _playerAndMissile1.Luminance;
-                    Pins.Col = _playerAndMissile1.Color;
+                    Pins.Lum = PlayerAndMissile1.Luminance;
+                    Pins.Col = PlayerAndMissile1.Color;
                 }
                 else
                 {
-                    Pins.Lum = _playerAndMissile0.Luminance;
-                    Pins.Col = _playerAndMissile0.Color;
+                    Pins.Lum = PlayerAndMissile0.Luminance;
+                    Pins.Col = PlayerAndMissile0.Color;
                 }
             }
             else
@@ -224,10 +220,10 @@ public sealed class Tia
             Pins.Col = _backgroundColor;
         }
 
-        _playerAndMissile0.DoPlayer(this);
-        _playerAndMissile1.DoPlayer(this);
+        PlayerAndMissile0.DoPlayer(this);
+        PlayerAndMissile1.DoPlayer(this);
 
-        if (_horizontalBlank || _vblank)
+        if (HorizontalBlank || VerticalBlank)
         {
             Pins.Lum = 0;
             Pins.Col = 0;
@@ -265,12 +261,12 @@ public sealed class Tia
             {
                 // VSYNC - Vertical sync set/clear
                 case 0x00:
-                    _vsync = GetBitAsBoolean(pins.Data05, 1);
+                    VerticalSync = GetBitAsBoolean(pins.Data05, 1);
                     break;
 
                 // VBLANK - Vertical blank set/clear
                 case 0x01:
-                    _vblank = GetBitAsBoolean(pins.Data05, 1);
+                    VerticalBlank = GetBitAsBoolean(pins.Data05, 1);
                     _i45Enable = GetBitAsBoolean(pins.Data67, 0);
                     _i03DumpToGround = GetBitAsBoolean(pins.Data67, 1);
                     break;
@@ -288,26 +284,26 @@ public sealed class Tia
 
                 // NUSIZ0 - Number-size player-missile 0
                 case 0x04:
-                    _playerAndMissile0.NumberSizePlayer = (byte)(pins.Data05 & 0b111);
-                    _playerAndMissile0.NumberSizeMissile = (byte)(pins.Data05 >> 3);
+                    PlayerAndMissile0.NumberSizePlayer = (byte)(pins.Data05 & 0b111);
+                    PlayerAndMissile0.NumberSizeMissile = (byte)(pins.Data05 >> 3);
                     break;
 
                 // NUSIZ1 - Number-size player-missile 1
                 case 0x05:
-                    _playerAndMissile1.NumberSizePlayer = (byte)(pins.Data05 & 0b111);
-                    _playerAndMissile1.NumberSizeMissile = (byte)(pins.Data05 >> 3);
+                    PlayerAndMissile1.NumberSizePlayer = (byte)(pins.Data05 & 0b111);
+                    PlayerAndMissile1.NumberSizeMissile = (byte)(pins.Data05 >> 3);
                     break;
 
                 // COLUP0 - Color-luminance player 0
                 case 0x06:
-                    _playerAndMissile0.Color = (byte)((pins.Data05 >> 4) | (pins.Data67 << 2));
-                    _playerAndMissile0.Luminance = (byte)((pins.Data05 >> 1) & 0b111);
+                    PlayerAndMissile0.Color = (byte)((pins.Data05 >> 4) | (pins.Data67 << 2));
+                    PlayerAndMissile0.Luminance = (byte)((pins.Data05 >> 1) & 0b111);
                     break;
 
                 // COLUP1 - Color-luminance player 1
                 case 0x07:
-                    _playerAndMissile1.Color = (byte)((pins.Data05 >> 4) | (pins.Data67 << 2));
-                    _playerAndMissile1.Luminance = (byte)((pins.Data05 >> 1) & 0b111);
+                    PlayerAndMissile1.Color = (byte)((pins.Data05 >> 4) | (pins.Data67 << 2));
+                    PlayerAndMissile1.Luminance = (byte)((pins.Data05 >> 1) & 0b111);
                     break;
 
                 // COLUPF - Color-luminance playfield
@@ -331,12 +327,12 @@ public sealed class Tia
 
                 // REFP0 - Reflect player 0
                 case 0x0B:
-                    _playerAndMissile0.Reflect = GetBitAsBoolean(pins.Data05, 3);
+                    PlayerAndMissile0.Reflect = GetBitAsBoolean(pins.Data05, 3);
                     break;
 
                 // REFP1 - Reflect player 1
                 case 0x0C:
-                    _playerAndMissile1.Reflect = GetBitAsBoolean(pins.Data05, 3);
+                    PlayerAndMissile1.Reflect = GetBitAsBoolean(pins.Data05, 3);
                     break;
 
                 // PF0 - Playfield register byte 0
@@ -397,14 +393,14 @@ public sealed class Tia
 
                 // RESP0 - Reset player 0
                 case 0x10:
-                    _playerAndMissile0.Reset = true;
-                    _playerAndMissile0.PlayerClockDiv4 = 0;
+                    PlayerAndMissile0.Reset = true;
+                    PlayerAndMissile0.PlayerClockDiv4 = 0;
                     break;
 
                 // RESP1 - Reset player 1
                 case 0x11:
-                    _playerAndMissile1.Reset = true;
-                    _playerAndMissile1.PlayerClockDiv4 = 0;
+                    PlayerAndMissile1.Reset = true;
+                    PlayerAndMissile1.PlayerClockDiv4 = 0;
                     break;
 
                 // RESM0 - Reset missile 0
@@ -445,12 +441,12 @@ public sealed class Tia
 
                 // GRP0 - Graphics player 0
                 case 0x1B:
-                    _playerAndMissile0.Graphics = (byte)(pins.Data05 | (pins.Data67 << 6));
+                    PlayerAndMissile0.Graphics = (byte)(pins.Data05 | (pins.Data67 << 6));
                     break;
 
                 // GRP1 - Graphics player 1
                 case 0x1C:
-                    _playerAndMissile1.Graphics = (byte)(pins.Data05 | (pins.Data67 << 6));
+                    PlayerAndMissile1.Graphics = (byte)(pins.Data05 | (pins.Data67 << 6));
                     break;
 
                 // ENAM0 - Graphics (enable) missile 0
@@ -468,7 +464,7 @@ public sealed class Tia
                 // HMP0 - Horizontal motion player 0
                 case 0x20:
                     // Invert HM bit 3 to simplify counting
-                    _hmp0 = (byte)
+                    PlayerAndMissile0.HorizontalMotionPlayer = (byte)
                         ((pins.Data05 >> 4) |
                         ((pins.Data67 & 1) << 2) |
                         ((pins.Data67 >> 1) == 1 ? 0b0000 : 0b1000));
@@ -476,7 +472,7 @@ public sealed class Tia
 
                 // HMP1 - Horizontal motion player 1
                 case 0x21:
-                    _hmp1 = (byte)
+                    PlayerAndMissile1.HorizontalMotionPlayer = (byte)
                         ((pins.Data05 >> 4) |
                         ((pins.Data67 & 1) << 2) |
                         ((pins.Data67 >> 1) == 1 ? 0b0000 : 0b1000));
@@ -525,8 +521,8 @@ public sealed class Tia
 
                 // HMCLR - Clear horizontal motion registers
                 case 0x2B:
-                    _hmp0 = 0b1000;
-                    _hmp1 = 0b1000;
+                    PlayerAndMissile0.HorizontalMotionPlayer = 0b1000;
+                    PlayerAndMissile1.HorizontalMotionPlayer = 0b1000;
                     break;
 
                 // CXCLR - Clear collision latches
@@ -538,5 +534,10 @@ public sealed class Tia
                     break;
             }
         }
+    }
+
+    public IEnumerable<DebuggerWindow> CreateDebuggerWindows()
+    {
+        yield return new TiaWindow(this);
     }
 }

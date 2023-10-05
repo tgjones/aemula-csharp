@@ -2,7 +2,7 @@
   "profiles": {
     "Aemula.Gui": {
       "commandName": "Project",
-      "commandLineArgs": "spaceinvaders \"\""
+      "commandLineArgs": "atari2600 \"C:\\Users\\Tim\\Downloads\\timing2.rom\""
     }
   }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -20,19 +21,28 @@ public static unsafe class ImGuiUtility
         ImGui.LoadIniSettingsFromDisk(ImGui.GetIO().IniFilename);
     }
 
-    public static bool InputUInt16(string label, ref ushort value)
+    public static bool InputHex<T>(string label, uint length, ref T value, T? maximum = null)
+        where T : struct, INumber<T>
     {
-        var input = value.ToString("X4");
+        var input = value.ToString($"X{length}", null);
 
-        ImGui.PushItemWidth(38);
+        ImGui.PushItemWidth(CalcTextWidth(length));
 
         var flags = ImGuiInputTextFlags.CharsHexadecimal | ImGuiInputTextFlags.CharsUppercase | ImGuiInputTextFlags.EnterReturnsTrue;
 
         var result = false;
-        if (ImGui.InputText(label, ref input, 4, flags))
+        if (ImGui.InputText(label, ref input, length, flags))
         {
-            ushort.TryParse(input, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
-            result = true;
+            var tempValue = T.Parse(input, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+            if (maximum == null || tempValue <= maximum.Value)
+            {
+                value = tempValue;
+                result = true;
+            }
+            else
+            {
+                result = false;
+            }
         }
 
         ImGui.PopItemWidth();
@@ -40,25 +50,58 @@ public static unsafe class ImGuiUtility
         return result;
     }
 
-    public static bool InputByte(string label, ref byte value)
+    public static Vector2 CalculateFrameDimensions(ReadOnlySpan<char> text, string[] otherTexts)
     {
-        var input = value.ToString("X2");
+        var size = CalcTextSize(text);
 
-        ImGui.PushItemWidth(22);
-
-        var flags = ImGuiInputTextFlags.CharsHexadecimal | ImGuiInputTextFlags.CharsUppercase | ImGuiInputTextFlags.EnterReturnsTrue;
-
-        var result = false;
-        if (ImGui.InputText(label, ref input, 2, flags))
+        for (var i = 0; i < otherTexts.Length; i++)
         {
-            byte.TryParse(input, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
-            result = true;
+            var size2 = ImGui.CalcTextSize(otherTexts[i]);
+            if (size2.X > size.X)
+            {
+                size = size2;
+            }
         }
 
-        ImGui.PopItemWidth();
+        size.Y = ImGui.GetFontSize() + (ImGui.GetStyle().FramePadding.Y * 2.5f);
+
+        size.X += ImGui.GetStyle().FramePadding.X * 2.5f;
+
+        return size;
+    }
+
+    private static float CalcTextWidth(uint length)
+    {
+        Span<char> chars = stackalloc char[(int)length];
+        for (var i = 0; i < length; i++)
+        {
+            chars[i] = 'X';
+        }
+
+        return CalculateFrameDimensions(chars, Array.Empty<string>()).X;
+    }
+
+    private static unsafe Vector2 CalcTextSize(ReadOnlySpan<char> chars)
+    {
+        Vector2 result = default;
+
+        var byteCount = Encoding.UTF8.GetByteCount(chars);
+
+        Span<byte> bytes = stackalloc byte[byteCount + 1]; // Last byte is \0
+
+        Encoding.UTF8.GetBytes(chars, bytes);
+
+        fixed (byte* bytesPtr = bytes)
+        {
+            ImGuiNative.igCalcTextSize(&result, bytesPtr, null, 0, -1);
+        }
 
         return result;
     }
+
+    public static bool InputUInt16(string label, ref ushort value) => InputHex(label, 4, ref value);
+
+    public static bool InputByte(string label, ref byte value, byte? maximum = null) => InputHex(label, 2, ref value, maximum);
 
     public static bool Combo(string label, ref int current_item, IReadOnlyList<string> items)
     {
@@ -141,5 +184,77 @@ public static unsafe class ImGuiUtility
             value = Unsafe.As<int, T>(ref currentItem);
         }
         return result;
+    }
+
+    public static void Label(string text)
+    {
+        ImGui.AlignTextToFramePadding();
+        ImGui.Text(text);
+        ImGui.SameLine();
+    }
+
+    private const uint BoxBorderColor = 0xFFCCCCCC;
+
+    public static void HorizontalBoxes(Vector2 size, ReadOnlySpan<uint> colors, Span<bool> clicked)
+    {
+        var x = ImGui.GetCursorScreenPos().X;
+        var y = ImGui.GetCursorScreenPos().Y;
+
+        ImGui.BeginGroup();
+
+        for (var i = 0; i < colors.Length; i++)
+        {
+            var a = new Vector2(x, y);
+            var b = a + size;
+
+            if (ImGui.IsWindowHovered())
+            {
+                var pos = ImGui.GetMousePos();
+                var hovered = pos.X >= a.X && pos.X <= b.X && pos.Y >= a.Y && pos.Y <= b.Y;
+                clicked[i] = hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+            }
+
+            var drawList = ImGui.GetWindowDrawList();
+
+            drawList.AddRectFilled(a, b, colors[i]);
+            drawList.AddRect(a, b, BoxBorderColor);
+
+            x += size.X - 1; // Subtract border thickness
+
+            ImGui.SetCursorScreenPos(new Vector2(x + size.X, y));
+        }
+
+        ImGui.EndGroup();
+    }
+
+    public static bool PaletteColorButton(Vector2 size, uint color)
+    {
+        var x = ImGui.GetCursorScreenPos().X;
+        var y = ImGui.GetCursorScreenPos().Y;
+
+        ImGui.BeginGroup();
+
+        var a = new Vector2(x, y);
+        var b = a + size;
+
+        var clicked = false;
+
+        if (ImGui.IsWindowHovered())
+        {
+            var pos = ImGui.GetMousePos();
+            var hovered = pos.X >= a.X && pos.X <= b.X && pos.Y >= a.Y && pos.Y <= b.Y;
+            clicked = hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+        }
+
+        var drawList = ImGui.GetWindowDrawList();
+
+        drawList.AddRectFilled(a, b, color);
+        drawList.AddRect(a, b, BoxBorderColor);
+
+        ImGui.SetCursorScreenPos(new Vector2(x + size.X, y));
+
+        ImGui.EndGroup();
+
+        return clicked;
     }
 }
