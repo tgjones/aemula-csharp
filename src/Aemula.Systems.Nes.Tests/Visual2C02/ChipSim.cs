@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 namespace Aemula.Systems.Nes.Tests.Visual2C02;
 
@@ -11,7 +11,7 @@ internal class ChipSim
     private readonly ushort _nodeGnd;
     private readonly ushort _nodePwr;
 
-    private readonly HashSet<ushort> _recalcHash;
+    private readonly BitArray _recalcListOutBitmap;
 
     private List<ushort> _recalcListIn;
     private List<ushort> _recalcListOut;
@@ -52,7 +52,7 @@ internal class ChipSim
         SetupNodes();
         SetupTransistors();
 
-        _recalcHash = new HashSet<ushort>();
+        _recalcListOutBitmap = new BitArray(_nodes.Length);
 
         _recalcListIn = new List<ushort>();
         _recalcListOut = new List<ushort>();
@@ -127,7 +127,7 @@ internal class ChipSim
             }
 
             _recalcListOut.Clear();
-            _recalcHash.Clear();
+            _recalcListOutBitmap.SetAll(false);
 
             foreach (var item in _recalcListIn)
             {
@@ -140,16 +140,6 @@ internal class ChipSim
 
     private void RecalcNode(ushort node)
     {
-        if (node == _nodeGnd)
-        {
-            return;
-        }
-
-        if (node == _nodePwr)
-        {
-            return;
-        }
-
         GetNodeGroup(node);
 
         var newState = GetNodeValue();
@@ -208,9 +198,14 @@ internal class ChipSim
     {
         if (nn == _nodeGnd) return;
         if (nn == _nodePwr) return;
-        if (_recalcHash.Contains(nn)) return;
+
+        if (_recalcListOutBitmap[nn])
+        {
+            return;
+        }
+
         _recalcListOut.Add(nn);
-        _recalcHash.Add(nn);
+        _recalcListOutBitmap[nn] = true;
     }
 
     private void GetNodeGroup(ushort i)
