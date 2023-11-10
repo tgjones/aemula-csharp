@@ -22,9 +22,9 @@ internal class Macros
         //UpdateVideo();
 
         //Console.WriteLine($"Halfcyc: {_cycle}");
-        //Console.WriteLine($"Clk: {ReadBit("clk0")}");
-        //Console.WriteLine($"Scanline: {ReadBits("vpos", 9)}");
-        //Console.WriteLine($"Pixel: {ReadBits("hpos", 9)}");
+        //Console.WriteLine($"Clk: {ReadBit(NodeName.clk0)}");
+        //Console.WriteLine($"Scanline: {ReadVPos()}");
+        //Console.WriteLine($"Pixel: {ReadHPos()}");
     }
 
     // simulate a single clock phase with no update to graphics or trace

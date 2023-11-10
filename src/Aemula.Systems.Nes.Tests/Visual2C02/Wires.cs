@@ -6,7 +6,6 @@ namespace Aemula.Systems.Nes.Tests.Visual2C02;
 internal class Wires
 {
     public readonly Node[] Nodes;
-    public readonly Dictionary<string, Transistor> Transistors = new Dictionary<string, Transistor>();
 
     public readonly ushort NGnd;
     public readonly ushort NPwr;
@@ -24,6 +23,10 @@ internal class Wires
         }
 
         Nodes = new Node[maximumId + 1];
+        for (var i = 0; i < Nodes.Length; i++)
+        {
+            Nodes[i].Num = ushort.MaxValue;
+        }
 
         SetupNodes();
         SetupTransistors();
@@ -34,14 +37,16 @@ internal class Wires
         foreach (var seg in Configuration.SegmentDefinitions)
         {
             var w = seg.Node;
-            var node = Nodes[w];
-            if (node == null)
+            ref var node = ref Nodes[w];
+            if (node.Num == ushort.MaxValue)
             {
                 node = new Node();
                 node.Num = w;
                 node.Pullup = seg.Pullup;
                 node.State = false;
                 node.Area = 0;
+                node.Gates = new List<Transistor>();
+                node.C1C2s = new List<Transistor>();
                 Nodes[w] = node;
             }
             if (w == NGnd) continue;
@@ -56,7 +61,6 @@ internal class Wires
     {
         foreach (var tdef in Configuration.TransistorDefinitions)
         {
-            var name = tdef.Name;
             var gate = tdef.Gate;
             var c1 = tdef.C1;
             var c2 = tdef.C2;
@@ -64,7 +68,6 @@ internal class Wires
             if (c1 == NPwr) { c1 = c2; c2 = NPwr; }
             var trans = new Transistor
             {
-                Name = tdef.Name,
                 On = false,
                 Gate = tdef.Gate,
                 C1 = c1,
@@ -73,7 +76,6 @@ internal class Wires
             Nodes[gate].Gates.Add(trans);
             Nodes[c1].C1C2s.Add(trans);
             Nodes[c2].C1C2s.Add(trans);
-            Transistors[name] = trans;
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 
 namespace Aemula.Systems.Nes.Tests.Visual2C02;
 

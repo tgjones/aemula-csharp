@@ -96,7 +96,7 @@ internal class ChipSim
         foreach (var i in _group)
         { 
             if (i == _wires.NPwr || i == _wires.NGnd) continue;
-            var n = _wires.Nodes[i];
+            ref var n = ref _wires.Nodes[i];
             if (n.State == newState) continue;
             n.State = newState;
             foreach (var t in n.Gates)
@@ -153,7 +153,9 @@ internal class ChipSim
         if (i == _wires.NGnd) return;
         if (i == _wires.NPwr) return;
 
-        foreach (var t in _wires.Nodes[i].C1C2s)
+        ref readonly var node = ref _wires.Nodes[i];
+
+        foreach (var t in node.C1C2s)
         {
             if (!t.On) continue;
             ushort other;
@@ -189,12 +191,31 @@ internal class ChipSim
         foreach (var nn in _group)
         {
             // In case we hit one of the special cases above
-            if (nn == _wires.NGnd || nn == _wires.NPwr) continue;
-            var n = _wires.Nodes[nn];
-            if (n.Pullup) return true;
-            if (n.Pulldown) return false;
-            if (n.State) hi_area += n.Area;
-            else lo_area += n.Area;
+            if (nn == _wires.NGnd || nn == _wires.NPwr)
+            {
+                continue;
+            }
+            
+            ref readonly var n = ref _wires.Nodes[nn];
+
+            if (n.Pullup)
+            {
+                return true;
+            }
+
+            if (n.Pulldown)
+            {
+                return false;
+            }
+
+            if (n.State)
+            {
+                hi_area += n.Area;
+            }
+            else
+            {
+                lo_area += n.Area;
+            }
         }
         return hi_area > lo_area;
     }
@@ -214,9 +235,16 @@ internal class ChipSim
             var c = str[i];
             if (c == 'x') continue;
             var state = codes[c];
-            if (_wires.Nodes[i] == null) continue;
-            _wires.Nodes[i].State = state;
-            foreach (var gate in _wires.Nodes[i].Gates)
+
+            ref var node = ref _wires.Nodes[i];
+
+            if (node.Num == ushort.MaxValue)
+            {
+                continue;
+            }
+
+            node.State = state;
+            foreach (var gate in node.Gates)
             {
                 gate.On = state;
             }
@@ -226,28 +254,28 @@ internal class ChipSim
     public void SetNode(NodeName name, bool value)
     {
         var nn = (ushort)name;
-        _wires.Nodes[nn].Pullup = value;
-        _wires.Nodes[nn].Pulldown = !value;
+        ref var node = ref _wires.Nodes[nn];
+
+        node.Pullup = value;
+        node.Pulldown = !value;
 
         RecalcNodeList([nn]);
     }
 }
 
-public class Node
+public struct Node
 {
-    //public readonly List<int> Segs = new List<int>();
     public ushort Num;
     public bool Pullup;
     public bool Pulldown;
     public bool State;
-    public readonly List<Transistor> Gates = new List<Transistor>();
-    public readonly List<Transistor> C1C2s = new List<Transistor>();
+    public List<Transistor> Gates;
+    public List<Transistor> C1C2s;
     public int Area;
 }
 
 public class Transistor
 {
-    public string Name;
     public bool On;
     public ushort Gate;
     public ushort C1;
