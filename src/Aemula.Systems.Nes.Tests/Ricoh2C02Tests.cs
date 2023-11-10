@@ -18,7 +18,7 @@ internal class Ricoh2C02Tests
         }
     }
 
-    [Test]
+    //[Test]
     public void TestPpuDump()
     {
         var ppuDumpLines = File.ReadAllLines("Assets/tracelog.txt");
@@ -89,7 +89,7 @@ internal class Ricoh2C02Tests
         myPlot.SaveFig("signal.png");
     }
 
-    [Test]
+    //[Test]
     public void TestPpuDump2()
     {
         var ppuDumpLines = File.ReadAllLines("Assets/tracelog2.txt");

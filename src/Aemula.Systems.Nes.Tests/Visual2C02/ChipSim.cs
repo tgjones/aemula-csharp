@@ -155,30 +155,51 @@ internal class ChipSim
         var newState = GetNodeValue();
 
         foreach (var i in _group)
-        { 
-            if (i == _nodePwr || i == _nodeGnd) continue;
+        {
             ref var n = ref _nodes[i];
-            if (n.State == newState) continue;
+
+            if (n.State == newState)
+            {
+                continue;
+            }
+
             n.State = newState;
+
             foreach (var t in n.Gates)
             {
-                if (n.State) TurnTransistorOn(t);
-                else TurnTransistorOff(t);
+                if (n.State)
+                {
+                    TurnTransistorOn(t);
+                }
+                else
+                {
+                    TurnTransistorOff(t);
+                }
             }
         }
     }
 
     private void TurnTransistorOn(Transistor t)
     {
-        if (t.On) return;
+        if (t.On)
+        {
+            return;
+        }
+
         t.On = true;
+
         AddRecalcNode(t.C1);
     }
 
     private void TurnTransistorOff(Transistor t)
     {
-        if (!t.On) return;
+        if (!t.On)
+        {
+            return;
+        }
+
         t.On = false;
+
         AddRecalcNode(t.C1);
         AddRecalcNode(t.C2);
     }
@@ -243,7 +264,11 @@ internal class ChipSim
 
         foreach (var t in node.C1C2s)
         {
-            if (!t.On) continue;
+            if (!t.On)
+            {
+                continue;
+            }
+
             ushort other;
             if (t.C1 == i) other = t.C2;
             else if (t.C2 == i) other = t.C1;
