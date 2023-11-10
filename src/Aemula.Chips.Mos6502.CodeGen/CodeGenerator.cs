@@ -7,17 +7,18 @@ using Microsoft.CodeAnalysis;
 namespace Aemula.Chips.Mos6502.CodeGen;
 
 [Generator]
-public class CodeGenerator : ISourceGenerator
+public class CodeGenerator : IIncrementalGenerator
 {
-    public void Initialize(GeneratorInitializationContext context) { }
-
-    public void Execute(GeneratorExecutionContext context)
+    public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        WriteInstructions(context);
-        WriteDisassembler(context);
+        context.RegisterPostInitializationOutput(c =>
+        {
+            WriteInstructions(c);
+            WriteDisassembler(c);
+        });
     }
 
-    private static void WriteInstructions(GeneratorExecutionContext context)
+    private static void WriteInstructions(IncrementalGeneratorPostInitializationContext context)
     {
         var sb = new StringBuilder();
 
@@ -78,7 +79,7 @@ public class CodeGenerator : ISourceGenerator
         context.AddSource("Mos6502.Instructions.generated.cs", sb.ToString());
     }
 
-    private static void WriteDisassembler(GeneratorExecutionContext context)
+    private static void WriteDisassembler(IncrementalGeneratorPostInitializationContext context)
     {
         // TODO: There's all kind of runtime string allocation here.
 
