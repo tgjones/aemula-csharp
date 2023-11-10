@@ -24,10 +24,11 @@ internal class ChipSim
     {
         ContainsNothing,
         ContainsHi,
-        ContainsPullup,
         ContainsPulldown,
+        ContainsPullup,
         ContainsPwr,
         ContainsGnd,
+        ContainsGndAndPwr,
     }
 
     public ChipSim(string state)
@@ -200,6 +201,22 @@ internal class ChipSim
 
     private void AddNodeToGroup(ushort i)
     {
+        if (i == _nodeGnd)
+        {
+            _groupState = _groupState == GroupState.ContainsPwr || _groupState == GroupState.ContainsGndAndPwr
+                ? GroupState.ContainsGndAndPwr
+                : GroupState.ContainsGnd;
+            return;
+        }
+
+        if (i == _nodePwr)
+        {
+            _groupState = _groupState == GroupState.ContainsGnd || _groupState == GroupState.ContainsGndAndPwr
+                ? GroupState.ContainsGndAndPwr
+                : GroupState.ContainsPwr;
+            return;
+        }
+
         if (_group.Contains(i))
         {
             return;
@@ -207,10 +224,22 @@ internal class ChipSim
 
         _group.Add(i);
 
-        if (i == _nodeGnd) return;
-        if (i == _nodePwr) return;
-
         ref readonly var node = ref _nodes[i];
+
+        if (_groupState < GroupState.ContainsPullup && node.Pullup)
+        {
+            _groupState = GroupState.ContainsPullup;
+        }
+
+        if (_groupState < GroupState.ContainsPulldown && node.Pulldown)
+        {
+            _groupState = GroupState.ContainsPulldown;
+        }
+
+        if (_groupState < GroupState.ContainsHi && node.State)
+        {
+            _groupState = GroupState.ContainsHi;
+        }
 
         foreach (var t in node.C1C2s)
         {
@@ -225,56 +254,60 @@ internal class ChipSim
 
     private bool GetNodeValue()
     {
-        var gnd = _group.Contains(_nodeGnd);
-        var pwr = _group.Contains(_nodePwr);
-        if (pwr && gnd)
+        switch (_groupState)
         {
-            // spr_d0 thru spr_d7 sometimes get conflicts,
-            // so suppress them here
-            if (_group.Contains(359) ||
-                _group.Contains(566) ||
-                _group.Contains(691) ||
-                _group.Contains(871) ||
-                _group.Contains(870) ||
-                _group.Contains(864) ||
-                _group.Contains(856) ||
-                _group.Contains(818))
-                gnd = pwr = false;
-        }
-        if (gnd) return false;
-        if (pwr) return true;
-        var hi_area = 0;
-        var lo_area = 0;
-        foreach (var nn in _group)
-        {
-            // In case we hit one of the special cases above
-            if (nn == _nodeGnd || nn == _nodePwr)
-            {
-                continue;
-            }
-            
-            ref readonly var n = ref _nodes[nn];
+            case GroupState.ContainsGndAndPwr:
+                // spr_d0 thru spr_d7 sometimes get conflicts,
+                // so suppress them here
+                if (_group.Contains(359) ||
+                    _group.Contains(566) ||
+                    _group.Contains(691) ||
+                    _group.Contains(871) ||
+                    _group.Contains(870) ||
+                    _group.Contains(864) ||
+                    _group.Contains(856) ||
+                    _group.Contains(818))
+                {
+                    goto case GroupState.ContainsHi;
+                }
+                else
+                {
+                    return false;
+                }
 
-            if (n.Pullup)
-            {
-                return true;
-            }
-
-            if (n.Pulldown)
-            {
+            case GroupState.ContainsNothing:
+            case GroupState.ContainsPulldown:
+            case GroupState.ContainsGnd:
                 return false;
-            }
 
-            if (n.State)
-            {
-                hi_area += n.Area;
-            }
-            else
-            {
-                lo_area += n.Area;
-            }
+            case GroupState.ContainsPullup:
+            case GroupState.ContainsPwr:
+                return true;
+
+            case GroupState.ContainsHi:
+                var areaHi = 0;
+                var areaLo = 0;
+                foreach (var nn in _group)
+                {
+                    ref readonly var n = ref _nodes[nn];
+
+                    // If we get here, we know that none of the nodes
+                    // in the group are gnd, pwr, pullup, or pulldown.
+
+                    if (n.State)
+                    {
+                        areaHi += n.Area;
+                    }
+                    else
+                    {
+                        areaLo += n.Area;
+                    }
+                }
+                return areaHi > areaLo;
+
+            default:
+                throw new InvalidOperationException();
         }
-        return hi_area > lo_area;
     }
 
     public void SetState(string str)
