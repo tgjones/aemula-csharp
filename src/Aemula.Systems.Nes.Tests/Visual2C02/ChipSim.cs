@@ -11,13 +11,24 @@ internal class ChipSim
     private readonly ushort _nodeGnd;
     private readonly ushort _nodePwr;
 
-    //private bool _ctrace;
-    //private int[] _traceTheseNodes;
-    //private int _traceTheseTransistors;
-    //private int _logLevel;
-    private List<ushort> _recalcList;
-    private HashSet<ushort> _recalcHash;
-    private List<ushort> _group;
+    private readonly HashSet<ushort> _recalcHash;
+
+    private List<ushort> _recalcListIn;
+    private List<ushort> _recalcListOut;
+
+    private readonly List<ushort> _group;
+
+    private GroupState _groupState;
+
+    private enum GroupState
+    {
+        ContainsNothing,
+        ContainsHi,
+        ContainsPullup,
+        ContainsPulldown,
+        ContainsPwr,
+        ContainsGnd,
+    }
 
     public ChipSim(string state)
     {
@@ -39,6 +50,13 @@ internal class ChipSim
 
         SetupNodes();
         SetupTransistors();
+
+        _recalcHash = new HashSet<ushort>();
+
+        _recalcListIn = new List<ushort>();
+        _recalcListOut = new List<ushort>();
+
+        _group = new List<ushort>();
 
         SetState(state);
     }
@@ -94,43 +112,29 @@ internal class ChipSim
         return _nodes[(int)nn].State;
     }
 
-    public void RecalcNodeList(List<ushort> list)
+    public void RecalcNodeList()
     {
-        var n = list[0];
-
-        _recalcList = new List<ushort>();
-        _recalcHash = new HashSet<ushort>();
-
-        for (var j = 0; j < 100; j++) // loop limiter
+        for (var j = 0; j < 100; j++) // Prevent infinite loops
         {
-            if (j == 99) Debug.WriteLine("Encountered loop!");
-            if (list.Count == 0) return;
-            //if (_ctrace)
-            //{
-            //    var i;
-            //    for (i = 0; i < traceTheseNodes.length; i++)
-            //    {
-            //        if (list.indexOf(traceTheseNodes[i]) != -1) break;
-            //    }
-            //    if ((traceTheseNodes.length == 0) || (list.indexOf(traceTheseNodes[i]) == -1))
-            //    {
-            //        console.log('recalcNodeList iteration: ', j, ' ', list.length, ' nodes');
-            //    }
-            //    else
-            //    {
-            //        console.log('recalcNodeList iteration: ', j, ' ', list.length, ' nodes ', list);
-            //    }
-            //}
-            foreach (var item in list)
+            var tmp = _recalcListIn;
+            _recalcListIn = _recalcListOut;
+            _recalcListOut = tmp;
+
+            if (_recalcListIn.Count == 0)
+            {
+                return;
+            }
+
+            _recalcListOut.Clear();
+            _recalcHash.Clear();
+
+            foreach (var item in _recalcListIn)
             {
                 RecalcNode(item);
             }
-            list = _recalcList;
-            _recalcList = new List<ushort>();
-            _recalcHash = new HashSet<ushort>();
         }
-        throw new Exception("Encountered loop while updating " + n + " - " + list + " still pending");
-        //if (_ctrace) Debug.WriteLine(n, " looping...");
+
+        throw new Exception("Encountered loop while updating");
     }
 
     private void RecalcNode(ushort node)
@@ -149,17 +153,6 @@ internal class ChipSim
 
         var newState = GetNodeValue();
 
-        //if (_ctrace)
-        //{a
-        //    var i;
-        //    for (i = 0; i < group.length; i++)
-        //    {
-        //        if (traceTheseNodes.indexOf(group[i]) != -1) break;
-        //    }
-        //    if ((traceTheseNodes.indexOf(node) != -1) || (i != group.length))
-        //        console.log('recalc ', node, ' ', group, ' to ', newState);
-        //}
-
         foreach (var i in _group)
         { 
             if (i == _nodePwr || i == _nodeGnd) continue;
@@ -177,8 +170,6 @@ internal class ChipSim
     private void TurnTransistorOn(Transistor t)
     {
         if (t.On) return;
-        //if (_ctrace && ((traceTheseTransistors.indexOf(t.name) != -1) || (traceTheseNodes.indexOf(t.c1) != -1) || (traceTheseNodes.indexOf(t.c2) != -1)))
-        //    console.log(t.name, ' on ', t.gate, ' ', t.c1, ' ', t.c2);
         t.On = true;
         AddRecalcNode(t.C1);
     }
@@ -186,8 +177,6 @@ internal class ChipSim
     private void TurnTransistorOff(Transistor t)
     {
         if (!t.On) return;
-        //if (ctrace && ((traceTheseTransistors.indexOf(t.name) != -1) || (traceTheseNodes.indexOf(t.c1) != -1) || (traceTheseNodes.indexOf(t.c2) != -1)))
-        //    console.log(t.name, ' off ', t.gate, ' ', t.c1, ' ', t.c2);
         t.On = false;
         AddRecalcNode(t.C1);
         AddRecalcNode(t.C2);
@@ -198,13 +187,14 @@ internal class ChipSim
         if (nn == _nodeGnd) return;
         if (nn == _nodePwr) return;
         if (_recalcHash.Contains(nn)) return;
-        _recalcList.Add(nn);
+        _recalcListOut.Add(nn);
         _recalcHash.Add(nn);
     }
 
     private void GetNodeGroup(ushort i)
     {
-        _group = new List<ushort>();
+        _group.Clear();
+        _groupState = GroupState.ContainsNothing;
         AddNodeToGroup(i);
     }
 
@@ -326,7 +316,9 @@ internal class ChipSim
         node.Pullup = value;
         node.Pulldown = !value;
 
-        RecalcNodeList([nn]);
+        _recalcListOut.Add(nn);
+
+        RecalcNodeList();
     }
 }
 
