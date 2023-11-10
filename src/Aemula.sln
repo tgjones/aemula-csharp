@@ -45,9 +45,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Systems.SpaceInvader
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Systems.Chip8.Tests", "Aemula.Systems.Chip8.Tests\Aemula.Systems.Chip8.Tests.csproj", "{D79271C1-5AAE-4BF9-AEC9-8AEB1D319D1A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aemula.Chips.MB14241", "Aemula.Chips.MB14241\Aemula.Chips.MB14241.csproj", "{EE46B930-603F-406F-A353-6C88BC30E6A4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Chips.MB14241", "Aemula.Chips.MB14241\Aemula.Chips.MB14241.csproj", "{EE46B930-603F-406F-A353-6C88BC30E6A4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aemula.Chips.MB14241.Tests", "Aemula.Chips.MB14241.Tests\Aemula.Chips.MB14241.Tests.csproj", "{23F7FD05-0AFF-45BE-BA56-26CD7E25A443}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Chips.MB14241.Tests", "Aemula.Chips.MB14241.Tests\Aemula.Chips.MB14241.Tests.csproj", "{23F7FD05-0AFF-45BE-BA56-26CD7E25A443}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Output", "Aemula.Output\Aemula.Output.csproj", "{6CEDACC9-8295-4467-A3CF-99A9D465CB89}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aemula.Output.Tests", "Aemula.Output.Tests\Aemula.Output.Tests.csproj", "{322AF9CD-93E2-4034-A243-3B3944A1729B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aemula.Systems.Nes.Tests", "Aemula.Systems.Nes.Tests\Aemula.Systems.Nes.Tests.csproj", "{0E250EFE-6900-4F70-9263-7B8E719A15A1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -147,6 +153,18 @@ Global
 		{23F7FD05-0AFF-45BE-BA56-26CD7E25A443}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{23F7FD05-0AFF-45BE-BA56-26CD7E25A443}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{23F7FD05-0AFF-45BE-BA56-26CD7E25A443}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6CEDACC9-8295-4467-A3CF-99A9D465CB89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6CEDACC9-8295-4467-A3CF-99A9D465CB89}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6CEDACC9-8295-4467-A3CF-99A9D465CB89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6CEDACC9-8295-4467-A3CF-99A9D465CB89}.Release|Any CPU.Build.0 = Release|Any CPU
+		{322AF9CD-93E2-4034-A243-3B3944A1729B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{322AF9CD-93E2-4034-A243-3B3944A1729B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{322AF9CD-93E2-4034-A243-3B3944A1729B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{322AF9CD-93E2-4034-A243-3B3944A1729B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E250EFE-6900-4F70-9263-7B8E719A15A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E250EFE-6900-4F70-9263-7B8E719A15A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E250EFE-6900-4F70-9263-7B8E719A15A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E250EFE-6900-4F70-9263-7B8E719A15A1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

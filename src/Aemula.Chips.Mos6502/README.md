@@ -21,12 +21,14 @@
 * [All 256 opcodes](http://visual6502.org/wiki/index.php?title=6502_all_256_Opcodes)
 * [6502 Timing States](http://www.visual6502.org/wiki/index.php?title=6502_Timing_States)
 * [Opcode matrix](http://www.oxyron.de/html/opcodes02.html)
+* [Slides from Visual 6502 Presentation](http://www.visual6502.org/docs/6502_in_action_14_web.pdf)
 
 ## Other implementations
 
 * [EDL](https://github.com/SavourySnaX/EDL/blob/master/chips/Accurate/m6502.edl)
 * [Chips](https://github.com/floooh/chips/blob/master/chips/m6502.h)
   * [Andre Weissflog's blog post about his cycle-stepped 6502 emulator](https://floooh.github.io/2019/12/13/cycle-stepped-6502.html) has been very helpful.
+* [go6502](https://github.com/zellyn/go6502)
 
 ## Timing
 

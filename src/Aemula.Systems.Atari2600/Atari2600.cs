@@ -20,16 +20,16 @@ public sealed class Atari2600 : EmulatedSystem
     private readonly Mos6507 _cpu;
     private readonly Mos6532 _riot;
     private readonly Tia _tia;
+    private readonly Television _television;
 
     private byte _tiaCycle;
 
     private ushort _lastPC;
 
     private Cartridge _cartridge;
-    private VideoOutput _videoOutput;
 
     internal Mos6507 Cpu => _cpu;
-    internal VideoOutput VideoOutput => _videoOutput;
+    //internal VideoOutput VideoOutput => _videoOutput;
 
     public Atari2600()
     {
@@ -37,7 +37,7 @@ public sealed class Atari2600 : EmulatedSystem
         _riot = new Mos6532();
         _tia = new Tia();
 
-        _videoOutput = new VideoOutput();
+        _television = new Television();
 
         // TODO: Remove this - it sets B&W pin to Color.
         _riot.Pins.DB = 0b1000;
@@ -101,7 +101,13 @@ public sealed class Atari2600 : EmulatedSystem
         }
 
         _tia.Cycle();
-        _videoOutput.Cycle(ref _tia.Pins);
+
+        _television.Signal(
+            new TelevisionSignal(
+                _tia.Pins.Sync,
+                _tia.Pins.Blk,
+                false,
+                (byte)((_tia.Pins.Lum & 0b111) | ((_tia.Pins.Col & 0xF) << 3))));
 
         _tiaCycle++;
 

@@ -105,7 +105,7 @@ internal sealed class Atari2600Debugger : Debugger
 
         yield return new BreakpointsWindow(this);
 
-        yield return new ScreenDisplayWindow(_system.VideoOutput.DisplayBuffer);
+        //yield return new ScreenDisplayWindow(_system.VideoOutput.DisplayBuffer);
 
         //yield return new MemoryEditor(1, _system.ReadByteDebug, _system.WriteByteDebug);
     }

@@ -29,7 +29,7 @@ public static class Program
     public static void Main(string[] args)
     {
         VeldridStartup.CreateWindowAndGraphicsDevice(
-            new WindowCreateInfo(100, 100, 1024, 768, WindowState.Normal, "Aemula"),
+            new WindowCreateInfo(100, 100, 1024, 768, WindowState.Maximized, "Aemula"),
             out var window,
             out var graphicsDevice);
 

@@ -2,7 +2,7 @@
   "profiles": {
     "Aemula.Gui": {
       "commandName": "Project",
-      "commandLineArgs": "atari2600 \"C:\\Users\\Tim\\Downloads\\timing2.rom\""
+      "commandLineArgs": "nes C:\\Code\\aemula-csharp\\src\\Aemula.Chips.Mos6502.Tests\\Assets\\nestest.nes"
     }
   }
 }
