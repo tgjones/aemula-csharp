@@ -12,7 +12,7 @@ internal class Ricoh2C02Tests
     public void TestVisual2C02()
     {
         var macros = new Macros();
-        for (var i = 0; i < 50000; i++)
+        for (var i = 0; i < 357954; i++)
         {
             macros.Step();
         }
