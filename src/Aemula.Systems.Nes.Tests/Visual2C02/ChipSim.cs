@@ -12,9 +12,9 @@ internal class ChipSim
     //private int[] _traceTheseNodes;
     //private int _traceTheseTransistors;
     //private int _logLevel;
-    private List<int> _recalcList;
-    private HashSet<int> _recalcHash;
-    private List<int> _group;
+    private List<ushort> _recalcList;
+    private HashSet<ushort> _recalcHash;
+    private List<ushort> _group;
 
     public ChipSim(string state)
     {
@@ -27,12 +27,12 @@ internal class ChipSim
         return _wires.Nodes[(int)nn].State;
     }
 
-    public void RecalcNodeList(List<int> list)
+    public void RecalcNodeList(List<ushort> list)
     {
         var n = list[0];
 
-        _recalcList = new List<int>();
-        _recalcHash = new HashSet<int>();
+        _recalcList = new List<ushort>();
+        _recalcHash = new HashSet<ushort>();
 
         for (var j = 0; j < 100; j++) // loop limiter
         {
@@ -59,14 +59,14 @@ internal class ChipSim
                 RecalcNode(item);
             }
             list = _recalcList;
-            _recalcList = new List<int>();
-            _recalcHash = new HashSet<int>();
+            _recalcList = new List<ushort>();
+            _recalcHash = new HashSet<ushort>();
         }
         throw new Exception("Encountered loop while updating " + n + " - " + list + " still pending");
         //if (_ctrace) Debug.WriteLine(n, " looping...");
     }
 
-    private void RecalcNode(int node)
+    private void RecalcNode(ushort node)
     {
         if (node == _wires.NGnd)
         {
@@ -126,7 +126,7 @@ internal class ChipSim
         AddRecalcNode(t.C2);
     }
 
-    private void AddRecalcNode(int nn)
+    private void AddRecalcNode(ushort nn)
     {
         if (nn == _wires.NGnd) return;
         if (nn == _wires.NPwr) return;
@@ -135,13 +135,13 @@ internal class ChipSim
         _recalcHash.Add(nn);
     }
 
-    private void GetNodeGroup(int i)
+    private void GetNodeGroup(ushort i)
     {
-        _group = new List<int>();
+        _group = new List<ushort>();
         AddNodeToGroup(i);
     }
 
-    private void AddNodeToGroup(int i)
+    private void AddNodeToGroup(ushort i)
     {
         if (_group.Contains(i))
         {
@@ -156,7 +156,7 @@ internal class ChipSim
         foreach (var t in _wires.Nodes[i].C1C2s)
         {
             if (!t.On) continue;
-            int other;
+            ushort other;
             if (t.C1 == i) other = t.C2;
             else if (t.C2 == i) other = t.C1;
             else throw new InvalidOperationException();
@@ -225,7 +225,7 @@ internal class ChipSim
 
     public void SetNode(NodeName name, bool value)
     {
-        var nn = (int)name;
+        var nn = (ushort)name;
         _wires.Nodes[nn].Pullup = value;
         _wires.Nodes[nn].Pulldown = !value;
 
@@ -236,7 +236,7 @@ internal class ChipSim
 public class Node
 {
     //public readonly List<int> Segs = new List<int>();
-    public int Num;
+    public ushort Num;
     public bool Pullup;
     public bool Pulldown;
     public bool State;
@@ -249,7 +249,7 @@ public class Transistor
 {
     public string Name;
     public bool On;
-    public int Gate;
-    public int C1;
-    public int C2;
+    public ushort Gate;
+    public ushort C1;
+    public ushort C2;
 }

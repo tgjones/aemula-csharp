@@ -6,7 +6,7 @@ namespace Aemula.Systems.Nes.Tests.Visual2C02;
 
 partial class Configuration
 {
-    public sealed record SegmentDefinition(int Node, bool Pullup, int Unknown, int Area);
+    public sealed record SegmentDefinition(ushort Node, bool Pullup, byte Unknown, int Area);
 
     public static readonly SegmentDefinition[] SegmentDefinitions;
 
@@ -46,9 +46,9 @@ partial class Configuration
             }
 
             result[i] = new SegmentDefinition(
-                int.Parse(line[0]),
+                ushort.Parse(line[0]),
                 line[1] == "+",
-                int.Parse(line[2]),
+                byte.Parse(line[2]),
                 area);
         }
 

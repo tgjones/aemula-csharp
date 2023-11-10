@@ -11,9 +11,9 @@ partial class Configuration
     /// <param name="C2">Drain node</param>
     public sealed record TransistorDefinition(
         string Name, 
-        int Gate, 
-        int C1, 
-        int C2);
+        ushort Gate,
+        ushort C1,
+        ushort C2);
 
     public static readonly TransistorDefinition[] TransistorDefinitions =
     {

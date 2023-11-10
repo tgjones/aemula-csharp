@@ -1,7 +1,7 @@
 ﻿namespace Aemula.Systems.Nes.Tests.Visual2C02;
 
 // Updated 2016/09/01
-public enum NodeName
+public enum NodeName : ushort
 {
     pwr = 1,
     gnd = 2,

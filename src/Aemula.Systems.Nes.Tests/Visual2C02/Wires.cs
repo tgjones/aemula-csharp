@@ -8,8 +8,8 @@ internal class Wires
     public readonly Node[] Nodes;
     public readonly Dictionary<string, Transistor> Transistors = new Dictionary<string, Transistor>();
 
-    public readonly int NGnd;
-    public readonly int NPwr;
+    public readonly ushort NGnd;
+    public readonly ushort NPwr;
 
     public Wires()
     {
