@@ -6,7 +6,10 @@ namespace Aemula.Systems.Nes.Tests.Visual2C02;
 
 internal class ChipSim
 {
-    private readonly Wires _wires;
+    private readonly Node[] _nodes;
+
+    private readonly ushort _nodeGnd;
+    private readonly ushort _nodePwr;
 
     //private bool _ctrace;
     //private int[] _traceTheseNodes;
@@ -18,13 +21,77 @@ internal class ChipSim
 
     public ChipSim(string state)
     {
-        _wires = new Wires();
+        _nodeGnd = (int)NodeName.gnd;
+        _nodePwr = (int)NodeName.pwr;
+
+        // Check maximum node ID.
+        var maximumId = 0;
+        foreach (var segmentDefinition in Configuration.SegmentDefinitions)
+        {
+            maximumId = Math.Max(maximumId, segmentDefinition.Node);
+        }
+
+        _nodes = new Node[maximumId + 1];
+        for (var i = 0; i < _nodes.Length; i++)
+        {
+            _nodes[i].Num = ushort.MaxValue;
+        }
+
+        SetupNodes();
+        SetupTransistors();
+
         SetState(state);
+    }
+
+    private void SetupNodes()
+    {
+        foreach (var seg in Configuration.SegmentDefinitions)
+        {
+            var w = seg.Node;
+            ref var node = ref _nodes[w];
+            if (node.Num == ushort.MaxValue)
+            {
+                node = new Node();
+                node.Num = w;
+                node.Pullup = seg.Pullup;
+                node.State = false;
+                node.Area = 0;
+                node.Gates = new List<Transistor>();
+                node.C1C2s = new List<Transistor>();
+            }
+            if (w == _nodeGnd) continue;
+            if (w == _nodePwr && seg.Unknown == 4) continue;
+            if (w == _nodePwr) continue;
+
+            node.Area += seg.Area;
+        }
+    }
+
+    private void SetupTransistors()
+    {
+        foreach (var tdef in Configuration.TransistorDefinitions)
+        {
+            var gate = tdef.Gate;
+            var c1 = tdef.C1;
+            var c2 = tdef.C2;
+            if (c1 == _nodeGnd) { c1 = c2; c2 = _nodeGnd; }
+            if (c1 == _nodePwr) { c1 = c2; c2 = _nodePwr; }
+            var trans = new Transistor
+            {
+                On = false,
+                Gate = tdef.Gate,
+                C1 = c1,
+                C2 = c2,
+            };
+            _nodes[gate].Gates.Add(trans);
+            _nodes[c1].C1C2s.Add(trans);
+            _nodes[c2].C1C2s.Add(trans);
+        }
     }
 
     public bool IsNodeHigh(NodeName nn)
     {
-        return _wires.Nodes[(int)nn].State;
+        return _nodes[(int)nn].State;
     }
 
     public void RecalcNodeList(List<ushort> list)
@@ -68,12 +135,12 @@ internal class ChipSim
 
     private void RecalcNode(ushort node)
     {
-        if (node == _wires.NGnd)
+        if (node == _nodeGnd)
         {
             return;
         }
 
-        if (node == _wires.NPwr)
+        if (node == _nodePwr)
         {
             return;
         }
@@ -95,8 +162,8 @@ internal class ChipSim
 
         foreach (var i in _group)
         { 
-            if (i == _wires.NPwr || i == _wires.NGnd) continue;
-            ref var n = ref _wires.Nodes[i];
+            if (i == _nodePwr || i == _nodeGnd) continue;
+            ref var n = ref _nodes[i];
             if (n.State == newState) continue;
             n.State = newState;
             foreach (var t in n.Gates)
@@ -128,8 +195,8 @@ internal class ChipSim
 
     private void AddRecalcNode(ushort nn)
     {
-        if (nn == _wires.NGnd) return;
-        if (nn == _wires.NPwr) return;
+        if (nn == _nodeGnd) return;
+        if (nn == _nodePwr) return;
         if (_recalcHash.Contains(nn)) return;
         _recalcList.Add(nn);
         _recalcHash.Add(nn);
@@ -150,10 +217,10 @@ internal class ChipSim
 
         _group.Add(i);
 
-        if (i == _wires.NGnd) return;
-        if (i == _wires.NPwr) return;
+        if (i == _nodeGnd) return;
+        if (i == _nodePwr) return;
 
-        ref readonly var node = ref _wires.Nodes[i];
+        ref readonly var node = ref _nodes[i];
 
         foreach (var t in node.C1C2s)
         {
@@ -168,8 +235,8 @@ internal class ChipSim
 
     private bool GetNodeValue()
     {
-        var gnd = _group.Contains(_wires.NGnd);
-        var pwr = _group.Contains(_wires.NPwr);
+        var gnd = _group.Contains(_nodeGnd);
+        var pwr = _group.Contains(_nodePwr);
         if (pwr && gnd)
         {
             // spr_d0 thru spr_d7 sometimes get conflicts,
@@ -191,12 +258,12 @@ internal class ChipSim
         foreach (var nn in _group)
         {
             // In case we hit one of the special cases above
-            if (nn == _wires.NGnd || nn == _wires.NPwr)
+            if (nn == _nodeGnd || nn == _nodePwr)
             {
                 continue;
             }
             
-            ref readonly var n = ref _wires.Nodes[nn];
+            ref readonly var n = ref _nodes[nn];
 
             if (n.Pullup)
             {
@@ -220,7 +287,7 @@ internal class ChipSim
         return hi_area > lo_area;
     }
 
-    private void SetState(string str)
+    public void SetState(string str)
     {
         var codes = new Dictionary<char, bool>
         {
@@ -236,7 +303,7 @@ internal class ChipSim
             if (c == 'x') continue;
             var state = codes[c];
 
-            ref var node = ref _wires.Nodes[i];
+            ref var node = ref _nodes[i];
 
             if (node.Num == ushort.MaxValue)
             {
@@ -254,7 +321,7 @@ internal class ChipSim
     public void SetNode(NodeName name, bool value)
     {
         var nn = (ushort)name;
-        ref var node = ref _wires.Nodes[nn];
+        ref var node = ref _nodes[nn];
 
         node.Pullup = value;
         node.Pulldown = !value;

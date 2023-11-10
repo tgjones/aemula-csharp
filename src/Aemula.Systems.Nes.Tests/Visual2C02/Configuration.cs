@@ -5,5 +5,6 @@ internal static partial class Configuration
     static Configuration()
     {
         SegmentDefinitions = CreateSegmentDefinitions();
+        TransistorDefinitions = CreateTransistorDefinitions();
     }
 }
